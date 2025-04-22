@@ -1,0 +1,20 @@
+# A model to estimate the true group size of gray whales from visual
+# observations and some UAS sightings that match visual observations.
+
+model{
+	
+	for (i in 1:n.obs){
+	
+		GS.UAS[i] ~ dpois(mu[i])
+	
+		log(mu[i]) <- B0 + B1 * GS.Vis[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]
+		
+		log.lkhd[i] <- logdensity.pois(GS.UAS[i], mu[i])
+	}
+	
+	B0 ~ dnorm(0, 0.01)
+	B1 ~ dnorm(0, 0.01)
+	B2 ~ dnorm(0, 0.01)
+	B3 ~ dnorm(0, 0.01)
+	B4 ~ dnorm(0, 0.01)
+}
