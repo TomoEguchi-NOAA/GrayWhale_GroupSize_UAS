@@ -16,6 +16,7 @@
 # 
 # 
 
+rm(list = ls())
 library(tidyverse)
 library(ggplot2)
 library(jagsUI)
@@ -89,52 +90,69 @@ MCMC.params <- list(n.samples = 10000,
 #                     n.burnin = 200,
 #                     n.chains = 5)
 
+Sightings <- filter(Sightings, GROUP_SIZE_LAST < 7)
+
+min.group.size <- Sightings$Group_Size_Min
+min.group.size[is.na(min.group.size)] <- 1
+
+jags.data <- list(n.obs = nrow(Sightings),
+                  GS.Vis = Sightings$GROUP_SIZE_LAST,
+                  GS.UAS = Sightings$Group_Size,
+                  Dist = Sightings$DIST_MIN,
+                  Bft = Sightings$BEAUFORT_LAST,
+                  Vis = Sightings$VISIBILITY_LAST,
+                  GS.min = min.group.size)
+
 jags.params.v1 <- c("GS.UAS", "mu", "B0", "B1", "B2",
                     "B3", "B4", "log.lkhd")
 
-jags.data.v1 <- list(n.obs = nrow(Sightings),
-                     GS.Vis = Sightings$GROUP_SIZE_LAST,
-                     GS.UAS = Sightings$Group_Size,
-                     Dist = Sightings$DIST_MIN,
-                     Bft = Sightings$BEAUFORT_LAST,
-                     Vis = Sightings$VISIBILITY_LAST)
+jags.params.v2 <- c("B0", "B1", "B2", "B3", "B4", 
+                    "GS.UAS", "mu.UAS", "log.lkhd")
 
-jags.params.v2 <- c("mu", "B0", "B1", "B2",
-                    "B3", "B4", "GS.mu", "log.lkhd")
+jags.params.v3 <- c("B0", "B1", "B2", "B3", "B4", 
+                    "GS.UAS", "alpha.UAS", "beta.UAS",
+                    "log.lkhd")
 
-pred.data <- Sightings %>% filter(is.na(Group_Size))
-jags.data.v2 <- list(n.obs = nrow(Best),
-                     GS.Vis = Best$GROUP_SIZE_LAST,
-                     GS.UAS = Best$Group_Size,
-                     Dist = Best$DIST_MIN,
-                     Bft = Best$BEAUFORT,
-                     Vis = Best$VISIBILITY,
-                     GS.pred = pred.data$GROUP_SIZE_LAST,
-                     n.pred = nrow(pred.data),
-                     Dist.pred = pred.data$DIST_MIN,
-                     Bft.pred = pred.data$BEAUFORT_LAST,
-                     Vis.pred = pred.data$VISIBILITY_LAST)
-
-jm <- jags(data = jags.data.v2,
-           parameters.to.save = jags.params.v2,
-           model.file = "models/model_Pois_logMu_v2.txt",
+jm <- jags(data = jags.data,
+           parameters.to.save = jags.params.v3,
+           model.file = "models/model_Pois_Gam_logMu_v3.txt",
            n.chains = MCMC.params$n.chains,
            n.burnin = MCMC.params$n.burnin,
-           n.iter = MCMC.params$n.samples)
+           n.iter = MCMC.params$n.samples,
+           parallel = T,
+           DIC = T)
 
 LOOIC <- compute.LOOIC(loglik.array = jm$sims.list$log.lkhd,
                          data.array = jags.data$GS.UAS,
                          MCMC.params = MCMC.params)
 
+Rmax <- lapply(jm$Rhat, FUN = max, na.rm = T)
+
 mcmc_trace(jm$samples,
-           c("B0", "B1", "B2", "B3", "B4"))
+           c("B0", "B1", "B2", "B3", "B4", "alpha.UAS", "beta.UAS"))
 
-GS.pred <- data.frame(Pred = jm$mean$mu.pred,
-                      Vis = pred.data$GROUP_SIZE_LAST)
+GS.UAS.pred <- data.frame(GS.mean = jm$mean$GS.UAS,
+                          GS.low = jm$q2.5$GS.UAS,
+                          GS.high = jm$q97.5$GS.UAS)
 
-ggplot() + geom_point(data = Sightings,
-                      aes(x = GROUP_SIZE_LAST,
-                          y = Group_Size),
-                      color = "green", size = 2) +
-  geom_jitter(data = GS, aes(x = Vis, y = UAS), 
-             color = "red", alpha = 0.3)
+Sightings.pred <- cbind(Sightings, GS.UAS.pred)
+
+ggplot(Sightings.pred) + 
+  geom_point(aes(x = GROUP_SIZE_LAST,
+                 y = GS.mean),
+             color = "blue", size = 2) +
+  geom_errorbar(aes(x = GROUP_SIZE_LAST,
+                    ymin = GS.low,
+                    ymax = GS.high),
+                color = "blue", alpha = 0.5) +
+  geom_jitter(aes(x = GROUP_SIZE_LAST,
+                 y = GS.mean),
+             color = "blue", size = 2) +
+  geom_point(aes(x = GROUP_SIZE_LAST, y = Group_Size),
+             color = "red", alpha = 0.5) +
+  geom_rug(aes(x = GROUP_SIZE_LAST)) +
+  geom_abline(slope = 1.0)
+
+
+# ggsave(filename = "figures/GroupSizePredictions.png", 
+#        device = "png", dpi = 600)
