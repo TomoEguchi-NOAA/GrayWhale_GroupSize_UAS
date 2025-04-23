@@ -68,17 +68,17 @@ Best <- read.csv(file = "data/GROUPS_BEST.csv") %>%
 Min <- read.csv(file = "data/GROUPS_MIN.csv")
 Sightings <- read.csv(file = "data/SIGHTINGS_GROUPS.csv")
 
-ggplot(Sightings) + 
-  #geom_point(aes(x = Group_Size, y = GROUP_SIZE_LAST)) +
-  geom_jitter(aes(x = Group_Size, y = GROUP_SIZE_LAST))
-
-ggplot(Sightings) +
-  geom_freqpoly(aes(x = DIST_MIN), bins = 20)
-
-ggplot(Sightings) +
-  geom_jitter(aes(x = DIST_MIN, y = GROUP_SIZE_LAST)) +
-  geom_jitter(aes(x = DIST_MIN, y = Group_Size),
-              color = "red", size = 2, alpha = 0.6)
+# ggplot(Sightings) + 
+#   #geom_point(aes(x = Group_Size, y = GROUP_SIZE_LAST)) +
+#   geom_jitter(aes(x = Group_Size, y = GROUP_SIZE_LAST))
+# 
+# ggplot(Sightings) +
+#   geom_freqpoly(aes(x = DIST_MIN), bins = 20)
+# 
+# ggplot(Sightings) +
+#   geom_jitter(aes(x = DIST_MIN, y = GROUP_SIZE_LAST)) +
+#   geom_jitter(aes(x = DIST_MIN, y = Group_Size),
+#               color = "red", size = 2, alpha = 0.6)
 
 MCMC.params <- list(n.samples = 10000,
                     n.thin = 50,
@@ -90,9 +90,11 @@ MCMC.params <- list(n.samples = 10000,
 #                     n.burnin = 200,
 #                     n.chains = 5)
 
-Sightings <- filter(Sightings, GROUP_SIZE_LAST < 7)
+#Sightings <- filter(Sightings, GROUP_SIZE_LAST < 7)
 
 min.group.size <- Sightings$Group_Size_Min
+GS.I <- vector(mode = "numeric", length = length(min.group.size))
+GS.I[!is.na(Sightings$Group_Size)] <- 1
 min.group.size[is.na(min.group.size)] <- 1
 
 jags.data <- list(n.obs = nrow(Sightings),
@@ -101,7 +103,8 @@ jags.data <- list(n.obs = nrow(Sightings),
                   Dist = Sightings$DIST_MIN,
                   Bft = Sightings$BEAUFORT_LAST,
                   Vis = Sightings$VISIBILITY_LAST,
-                  GS.min = min.group.size)
+                  GS.min = min.group.size,
+                  GS.I = GS.I)
 
 jags.params.v1 <- c("GS.UAS", "mu", "B0", "B1", "B2",
                     "B3", "B4", "log.lkhd")
