@@ -7,7 +7,7 @@ model{
 	
 		GS.UAS[i] ~ dpois(mu[i])
 	
-		log(mu[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]
+		log(mu[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i]) * (1 - GS.I[i]) * (B5 * GS.min[i])) + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]
 		
 		log.lkhd[i] <- logdensity.pois(GS.UAS[i], mu[i])
 	}
@@ -17,5 +17,5 @@ model{
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
-
+	B5 ~ dnorm(0, 0.1)
 }

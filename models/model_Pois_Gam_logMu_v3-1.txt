@@ -10,7 +10,7 @@ model{
 		GS.Vis[i] ~ dpois(mu.Vis[i])T(1,)   # Visually observed group size
 		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(1,)   # UAS-based group size
 	
-		log(mu.Vis[i]) <- B0 + B1 * GS.UAS[i]  + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] 
+		log(mu.Vis[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i]) * (1 - GS.I[i]) * (B5 * GS.min[i]))  + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] 
 		
 		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu.Vis[i])
 	}
@@ -20,6 +20,7 @@ model{
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
+	B5 ~ dnorm(0, 0.1)
 
 	alpha.UAS ~ dunif(0.01, 10)
 	beta.UAS ~ dunif(0.01, 10)

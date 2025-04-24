@@ -91,7 +91,11 @@ MCMC.params <- list(n.samples = 10000,
 #                     n.chains = 5)
 
 #Sightings <- filter(Sightings, GROUP_SIZE_LAST < 7)
+# For testing - keep only sightings with both visual and UAS data
+# Sightings %>%
+#   filter(!is.na(Group_Size)) -> Sightings
 
+# Index for whether or not there is a UAS-based group size
 min.group.size <- Sightings$Group_Size_Min
 GS.I <- vector(mode = "numeric", length = length(min.group.size))
 GS.I[!is.na(Sightings$Group_Size)] <- 1
@@ -106,19 +110,47 @@ jags.data <- list(n.obs = nrow(Sightings),
                   GS.min = min.group.size,
                   GS.I = GS.I)
 
-jags.params.v1 <- c("GS.UAS", "mu", "B0", "B1", "B2",
-                    "B3", "B4", "log.lkhd")
+model.ver <- "v6"
+model.file <- switch(model.ver,
+                     "v1" = "models/model_Pois_logMu_v1.txt",
+                     "v1-1" = "models/model_Pois_logMu_v1-1.txt",
+                     "v2" = "models/model_Pois_Pois_logMu_v2.txt",
+                     "v2-1" = "models/model_Pois_Pois_logMu_v2-1.txt",
+                     "v3" = "models/model_Pois_Gam_logMu_v3.txt",
+                     "v3-1"= "models/model_Pois_Gam_logMu_v3-1.txt",
+                     "v4" = "models/model_Pois_Pois_logitP_v4.txt",
+                     "v5" = "models/model_Pois_Gam_logitP_v5.txt",
+                     "v6" = "models/model_Pois_Gam_logitP_v6.txt")
 
-jags.params.v2 <- c("B0", "B1", "B2", "B3", "B4", 
-                    "GS.UAS", "mu.UAS", "log.lkhd")
-
-jags.params.v3 <- c("B0", "B1", "B2", "B3", "B4", 
-                    "GS.UAS", "alpha.UAS", "beta.UAS",
-                    "log.lkhd")
+jags.params <- switch(model.ver,
+       "v1" = c("GS.UAS", "mu", "B0", "B1", "B2",
+                "B3", "B4", "log.lkhd"),
+       "v1-1" = c("GS.UAS", "mu", "B0", "B1", "B2",
+                "B3", "B4", "B5", "log.lkhd"),
+       "v2" = c("B0", "B1", "B2", "B3", "B4", 
+                "GS.UAS", "mu.UAS", "log.lkhd"),
+       "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5",
+                "GS.UAS", "mu.UAS", "log.lkhd"),
+       "v3" = c("B0", "B1", "B2", "B3", "B4", 
+                "GS.UAS", "alpha.UAS", "beta.UAS",
+                "log.lkhd"),
+       "v3-1" = c("B0", "B1", "B2", "B3", "B4", "B5",
+                "GS.UAS", "alpha.UAS", "beta.UAS",
+                "log.lkhd"),
+       
+       "v4" = c("B0", "B1", "B2", "B3", "p.Vis",
+                "GS.UAS", "mu.GS", "log.lkhd"),
+       "v5" = c("B0", "B1", "B2", "B3", "p.Vis",
+                "GS.UAS", "alpha.UAS", "beta.UAS",
+                "log.lkhd"),
+       "v6" = c("B0", "B1", "B2", "B3", "p.Vis", "p.UAS",
+                "B0.uas", "B1.uas", "B2.uas", "B3.uas",
+                "GS.", "GS.UAS", "GS.Vis", "alpha.", "beta.",
+                "log.lkhd"))
 
 jm <- jags(data = jags.data,
-           parameters.to.save = jags.params.v3,
-           model.file = "models/model_Pois_Gam_logMu_v3.txt",
+           parameters.to.save = jags.params,
+           model.file = model.file,
            n.chains = MCMC.params$n.chains,
            n.burnin = MCMC.params$n.burnin,
            n.iter = MCMC.params$n.samples,
@@ -126,17 +158,62 @@ jm <- jags(data = jags.data,
            DIC = T)
 
 LOOIC <- compute.LOOIC(loglik.array = jm$sims.list$log.lkhd,
-                         data.array = jags.data$GS.UAS,
-                         MCMC.params = MCMC.params)
+                       data.array = jags.data$GS.UAS,
+                       MCMC.params = MCMC.params)
 
 Rmax <- lapply(jm$Rhat, FUN = max, na.rm = T)
 
-mcmc_trace(jm$samples,
-           c("B0", "B1", "B2", "B3", "B4", "alpha.UAS", "beta.UAS"))
+params.to.plot <- switch(model.ver,
+                         "v1" = c("B0", "B1", "B2", "B3", "B4"),
+                         "v1-1" = c("B0", "B1", "B2", "B3", "B4", "B5"),
+                         "v2" = c("B0", "B1", "B2", "B3", "B4", "mu.UAS"),
+                         "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.UAS"),
+                         "v3" = c("B0", "B1", "B2", "B3", "B4", 
+                                  "alpha.UAS", "beta.UAS"),
+                         "v3-1"= c("B0", "B1", "B2", "B3", "B4", "B5", 
+                                   "alpha.UAS", "beta.UAS"),
+                         "v4" = c("B0", "B1", "B2", "B3", "mu.GS"),
+                         "v5" = c("B0", "B1", "B2", "B3", "alpha.UAS", "beta.UAS"),
+                         "v6" = c("B0", "B1", "B2", "B3", "B0.uas", 
+                                  "B1.uas", "B2.uas", "B3.uas", "alpha.", "beta."))
 
-GS.UAS.pred <- data.frame(GS.mean = jm$mean$GS.UAS,
-                          GS.low = jm$q2.5$GS.UAS,
-                          GS.high = jm$q97.5$GS.UAS)
+mcmc_trace(jm$samples,
+           params.to.plot)
+
+mcmc_dens(jm$samples,
+           params.to.plot)
+
+if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
+  GS.UAS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
+  mutate(y = dgamma(x, jm$mean$alpha.UAS, jm$mean$beta.UAS))
+
+  ggplot(GS.UAS.df) + 
+    geom_line(aes(x = x, y = y)) +
+    labs(x = "Group size", y = "Density")
+} elseif (mode.ver == "v6"){
+  GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
+    mutate(y = dgamma(x, jm$mean$alpha., jm$mean$beta.))
+  
+  ggplot(GS.df) + 
+    geom_line(aes(x = x, y = y)) +
+    labs(x = "Group size", y = "Density")
+}
+
+
+if (model.ver == "v6"){
+  GS.UAS.pred <- data.frame(GS.mean = jm$mean$GS.,
+                            GS.low = jm$q2.5$GS.,
+                            GS.high = jm$q97.5$GS.,
+                            p.Vis.mean = jm$mean$p.Vis)
+  
+} else{
+  GS.UAS.pred <- data.frame(GS.mean = jm$mean$GS.UAS,
+                            GS.low = jm$q2.5$GS.UAS,
+                            GS.high = jm$q97.5$GS.UAS,
+                            p.Vis.mean = jm$mean$p.Vis)
+  
+}
+# for v6 testing
 
 Sightings.pred <- cbind(Sightings, GS.UAS.pred)
 
@@ -151,11 +228,12 @@ ggplot(Sightings.pred) +
   geom_jitter(aes(x = GROUP_SIZE_LAST,
                  y = GS.mean),
              color = "blue", size = 2) +
-  geom_point(aes(x = GROUP_SIZE_LAST, y = Group_Size),
-             color = "red", alpha = 0.5) +
+  geom_jitter(aes(x = GROUP_SIZE_LAST, y = Group_Size),
+             color = "red", alpha = 0.5,
+             height = 0) +
   geom_rug(aes(x = GROUP_SIZE_LAST)) +
   geom_abline(slope = 1.0)
 
 
-# ggsave(filename = "figures/GroupSizePredictions.png", 
-#        device = "png", dpi = 600)
+ggsave(filename = paste0("figures/GroupSizePredictions_", model.ver, ".png"),
+         device = "png", dpi = 600)

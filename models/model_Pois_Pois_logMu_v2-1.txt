@@ -1,0 +1,25 @@
+# A model to estimate the true group size of gray whales from visual
+# observations and some UAS sightings that match visual observations.
+#
+# v2: UAS group size observations are considered a Poisson random variable
+
+model{
+	
+	for (i in 1:n.obs){
+	
+		GS.Vis[i] ~ dpois(mu.Vis[i])T(1,)
+		GS.UAS[i] ~ dpois(mu.UAS)T(1,)
+	
+		log(mu.Vis[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i]) * (1 - GS.I[i]) * (B5 * GS.min[i])) + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]
+		
+		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu.Vis[i])
+	}
+	
+	B0 ~ dnorm(0, 0.1)
+	B1 ~ dnorm(0, 0.1)
+	B2 ~ dnorm(0, 0.1)
+	B3 ~ dnorm(0, 0.1)
+	B4 ~ dnorm(0, 0.1)
+	B5 ~ dnorm(0, 0.1)
+	mu.UAS ~ dunif(1, 10)
+}
