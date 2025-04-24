@@ -213,7 +213,6 @@ if (model.ver == "v6"){
                             p.Vis.mean = jm$mean$p.Vis)
   
 }
-# for v6 testing
 
 Sightings.pred <- cbind(Sightings, GS.UAS.pred)
 
