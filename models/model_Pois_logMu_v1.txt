@@ -3,13 +3,17 @@
 
 model{
 	
-	for (i in 1:n.obs){
+	for (i in 1:n.grp){
 	
-		GS.UAS[i] ~ dpois(mu[i])
+		GS.Vis[i] ~ dpois(mu[i])T(1, GS.max)
 	
-		log(mu[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]
-		
-		log.lkhd[i] <- logdensity.pois(GS.UAS[i], mu[i])
+		log(mu[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
+								Obs.RF[obs[i]]
+	
+		#GS.UAS[i] ~ dpois(mu.UAS)
+		# GAM(1.5, 0.5) is mean = 3, var = 6
+		GS.UAS[i] ~ dgamma(1.5, 0.5)T(GS.min[i],GS.max)
+		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu[i])
 	}
 	
 	B0 ~ dnorm(0, 0.1)
@@ -17,5 +21,13 @@ model{
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
-
+	
+	#mu.UAS ~ dgamma(1, 0.1)
+	
+	## Observer random effect
+	for(o in 1:n.obs){
+		Obs.RF[o] ~ dnorm(0, tau.Obs)
+	}#o
+	sigma.Obs ~ dgamma(1, 0.1)
+	tau.Obs <- pow(sigma.Obs,-2)
 }

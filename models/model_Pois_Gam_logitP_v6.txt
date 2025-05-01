@@ -2,20 +2,28 @@
 # observations and some UAS sightings that match visual observations.
 #
 # Pois_Gam_v6: Observations by visual observers and UAS are modeled with independent
-               Poisson distributions. 
+#              Poisson distributions. 
 
 model{
 	
-	for (i in 1:n.obs){
+	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(GS.[i] * p.Vis[i])T(1,)   # Observed group size by visual observers
-		GS.UAS[i] ~ dpois(p.UAS[i] * GS.[i])T(1,)   # Observed group size by UAS
-		GS.[i] ~ dgamma(alpha., beta.)T(1,)   # True group size
+		# True group size
+		GS.[i] ~ dgamma(alpha., beta.)T(1,GS.max)   
 	
-		logit(p.Vis[i]) <- B0 + B1 * Dist[i] + B2 * Bft[i] + B3 * Vis[i]
-		logit(p.UAS[i]) <- B0.uas + B2.uas * Bft[i] + B3.uas * Vis[i]
+		# Observed group size by visual observers
+		GS.Vis[i] ~ dpois(GS.[i] * p.Vis[i])T(1,GS.max)
 		
-		#e[i] ~ dnorm(0, 0.1)
+		# Observed group size by UAS
+		GS.UAS[i] ~ dpois(GS.[i] * p.UAS[i] )T(GS.min[i],GS.max)   
+		
+		# Detection probability
+		logit(p.Vis[i]) <- B0 + B1 * Dist[i] + B2 * Bft[i] + B3 * Vis[i] + 
+								Obs.RF[obs[i]]
+								
+		p.UAS[i] <- 1.0 #ifelse(GS.I[i] == 1, 1.0, ilogit(B0.uas + B2.uas * Bft[i] + B3.uas * Vis[i]))
+		
+		#e.Vis[i] ~ dnorm(0, 0.01)
 		log.lkhd[i] <- logdensity.pois(GS.Vis[i], GS.[i]*p.Vis[i])
 	}
 	
@@ -23,13 +31,21 @@ model{
 	B1 ~ dnorm(0, 0.1)
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
+	B4 ~ dnorm(0, 0.1)
 
-	B0.uas ~ dnorm(0, 0.1)
-	B1.uas ~ dnorm(0, 0.1)
-	B2.uas ~ dnorm(0, 0.1)
-	B3.uas ~ dnorm(0, 0.1)
+	#B0.uas ~ dnorm(0, 0.1)
+	#B1.uas ~ dnorm(0, 0.1)
+	#B2.uas ~ dnorm(0, 0.1)
+	#B3.uas ~ dnorm(0, 0.1)
 	
-	alpha. ~ dunif(0.01, 10)
-	beta. ~ dunif(0.01, 10)
+	# GAM(1.5, 0.5) is mean = 3, var = 6
+	alpha. <- 1.5
+	beta. <- 0.5
 	
+	## Observer random effect
+	for(o in 1:n.obs){
+		Obs.RF[o] ~ dnorm(0, tau.Obs)
+	}#o
+	sigma.Obs ~ dgamma(1, 0.1)
+	tau.Obs <- pow(sigma.Obs,-2)
 }
