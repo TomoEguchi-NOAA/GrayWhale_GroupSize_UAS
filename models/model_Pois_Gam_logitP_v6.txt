@@ -14,14 +14,15 @@ model{
 		# Observed group size by visual observers
 		GS.Vis[i] ~ dpois(GS.[i] * p.Vis[i])T(1,GS.max)
 		
-		# Observed group size by UAS
+		# Observed group size by UAS with p.UAS = 1.0
 		GS.UAS[i] ~ dpois(GS.[i] * p.UAS[i] )T(GS.min[i],GS.max)   
 		
 		# Detection probability
 		logit(p.Vis[i]) <- B0 + B1 * Dist[i] + B2 * Bft[i] + B3 * Vis[i] + 
 								Obs.RF[obs[i]]
 								
-		p.UAS[i] <- 1.0 #ifelse(GS.I[i] == 1, 1.0, ilogit(B0.uas + B2.uas * Bft[i] + B3.uas * Vis[i]))
+		p.UAS[i] <- 1.0 
+		#ifelse(GS.I[i] == 1, 1.0, ilogit(B0.uas + B2.uas * Bft[i] + B3.uas * Vis[i]))
 		
 		#e.Vis[i] ~ dnorm(0, 0.01)
 		log.lkhd[i] <- logdensity.pois(GS.Vis[i], GS.[i]*p.Vis[i])

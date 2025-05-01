@@ -348,12 +348,3 @@ for (k in 1:9){
 
 GS.median.df <- data.frame(Vis.GS = c(1:9),
                            GS.median = GS.median)
-# GS.Vis.1.samples <- GS.samples[which(jags.data$GS.Vis == 1)] %>% unlist()
-# GS.Vis.2.samples <- GS.samples[which(jags.data$GS.Vis == 2)] %>% unlist()
-# GS.Vis.3.samples <- GS.samples[which(jags.data$GS.Vis == 3)] %>% unlist()
-# GS.Vis.4.samples <- GS.samples[which(jags.data$GS.Vis == 4)] %>% unlist()
-# GS.Vis.5.samples <- GS.samples[which(jags.data$GS.Vis == 5)] %>% unlist()
-# GS.Vis.6.samples <- GS.samples[which(jags.data$GS.Vis == 6)] %>% unlist()
-# GS.Vis.7.samples <- GS.samples[which(jags.data$GS.Vis == 7)] %>% unlist()
-# GS.Vis.8.samples <- GS.samples[which(jags.data$GS.Vis == 8)] %>% unlist()
-# GS.Vis.9.samples <- GS.samples[which(jags.data$GS.Vis == 9)] %>% unlist()
