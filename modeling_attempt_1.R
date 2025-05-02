@@ -74,6 +74,10 @@ uniq.obs.df <- data.frame(OBS_1 = unique(Sightings.1$OBS_1)) %>%
 Sightings.1 %>% 
   left_join(uniq.obs.df, by = "OBS_1") -> Sightings
 
+# Create a new column of minimum group sizes
+Sightings %>%
+  mutate(Group_Size_Min_Vis = GROUP_SIZE_LAST - 2) -> Sightings
+
 # ggplot(Sightings) + 
 #   #geom_point(aes(x = Group_Size, y = GROUP_SIZE_LAST)) +
 #   geom_jitter(aes(x = Group_Size, y = GROUP_SIZE_LAST))
@@ -102,14 +106,18 @@ MCMC.params <- list(n.samples = 10000,
 #   filter(!is.na(Group_Size)) -> Sightings
 
 # Index for whether or not there is a UAS-based group size
-min.group.size <- Sightings$Group_Size_Min
+#min.group.size <- Sightings$Group_Size_Min
+min.group.size <- Sightings$Group_Size_Min_Vis
+
 GS.I <- vector(mode = "numeric", length = length(min.group.size))
 GS.I[!is.na(Sightings$Group_Size)] <- 1
 
 # Adjust the minimum group size. Minimum group size should be less than
 # the observed 
-
-min.group.size[is.na(min.group.size)] <- 1
+#min.group.size[is.na(min.group.size)] <- 1
+min.group.size[min.group.size < 1] <- 1
+min.group.size.UAS <- Sightings$Group_Size_Min
+min.group.size.UAS[is.na(min.group.size.UAS)] <- min.group.size[is.na(min.group.size.UAS)]
 
 # group size categories
 GS.cat <- vector(mode = "numeric", length = length(min.group.size))
@@ -124,15 +132,16 @@ jags.data <- list(n.grp = nrow(Sightings),
                   Bft = Sightings$BEAUFORT_LAST,
                   Vis = Sightings$VISIBILITY_LAST,
                   obs = Sightings$Obs.ID,
-                  GS.min = min.group.size,
+                  GS.min.Vis = min.group.size,
+                  GS.min.UAS = min.group.size.UAS,
                   GS.I = GS.I,
-                  GS.max = max(min.group.size) + 5,
+                  GS.max = max(Sightings$Group_Size, na.rm = T) + 5,
                   GS.cat = GS.cat,
                   n.obs = nrow(uniq.obs.df))
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v6"
+model.ver <- "v1-1"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -201,7 +210,8 @@ LOOIC <- compute.LOOIC(loglik.array = jm$sims.list$log.lkhd,
                        data.array = jags.data$GS.UAS,
                        MCMC.params = MCMC.params)
 
-max.Rhat <- lapply(jm$Rhat, FUN = max, na.rm = T)
+max.Rhat <- lapply(jm$Rhat, FUN = max, na.rm = T) 
+max.max.Rhat <- max(unlist(max.Rhat))
 
 params.to.plot <- switch(model.ver,
                          "v1" = c("B0", "B1", "B2", "B3", "B4", "sigma.Obs"),
@@ -218,7 +228,8 @@ params.to.plot <- switch(model.ver,
                          "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", 
                                   "B2.uas", "B3.uas", "alpha.", "beta.", "sigma.Obs"),
                          "v8" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", 
-                                  "B2.uas", "B3.uas", "mu.GS", "sigma.Obs"))
+                                  "B2.uas", "B3.uas", "mu.GS[1]",
+                                  "mu.GS[2]", "mu.GS[3]", "sigma.Obs"))
 
 # The following two lines don't run for "v1-1" for some reason... 
 mcmc_trace(jm$samples,
@@ -236,7 +247,7 @@ if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
     labs(x = "Group size", y = "Density")
 } else if (model.ver == "v6" | model.ver == "v7"){
   GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
-    mutate(y = dgamma(x, 1.5,0.5.))
+    mutate(y = dgamma(x, 1.5,0.5))
   
   ggplot(GS.df) + 
     geom_line(aes(x = x, y = y)) +
@@ -257,16 +268,17 @@ GS.UAS.pred <- data.frame(GS.UAS.mean = jm$mean$GS.UAS,
 if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
   Sightings.pred <- cbind(Sightings, GS.UAS.pred, GS.pred)
   p.pred <- ggplot(Sightings.pred) + 
-    geom_point(aes(x = GROUP_SIZE_LAST,
-                   y = GS.mean),
-               color = "blue", size = 2) +
+    # geom_point(aes(x = GROUP_SIZE_LAST,
+    #                y = GS.mean),
+    #            color = "blue", size = 2) +
     geom_errorbar(aes(x = GROUP_SIZE_LAST,
                       ymin = GS.low,
                       ymax = GS.high),
                   color = "blue", alpha = 0.5) +
     geom_jitter(aes(x = GROUP_SIZE_LAST,
                     y = GS.mean),
-                color = "blue", size = 2) +
+                color = "blue", size = 2,
+                height = 0) +
     geom_jitter(aes(x = GROUP_SIZE_LAST, 
                     y = Group_Size),
                 color = "red", alpha = 0.5,
@@ -277,27 +289,29 @@ if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
          filename = paste0("figures/GroupSizePredictions_", model.ver, ".png"),
          device = "png", dpi = 600)
   
-} else if (model.ver == "v1") {
+} else {
   
   Sightings.pred <- cbind(Sightings, GS.UAS.pred)
   p.pred.UAS <- ggplot(Sightings.pred) + 
-    geom_point(aes(x = GROUP_SIZE_LAST,
-                   y = GS.UAS.mean),
-               color = "blue", size = 2) +
+    # geom_point(aes(x = GROUP_SIZE_LAST,
+    #                y = GS.UAS.mean),
+    #            color = "blue", size = 2) +
     geom_errorbar(aes(x = GROUP_SIZE_LAST,
                       ymin = GS.UAS.low,
                       ymax = GS.UAS.high),
                   color = "blue", alpha = 0.5) +
     geom_jitter(aes(x = GROUP_SIZE_LAST,
                     y = GS.UAS.mean),
-                color = "blue", size = 2) +
-    geom_jitter(aes(x = GROUP_SIZE_LAST, y = Group_Size),
+                color = "blue", size = 2,
+                height = 0) +
+    geom_jitter(aes(x = GROUP_SIZE_LAST, 
+                    y = Group_Size),
                 color = "red", alpha = 0.5,
                 height = 0) +
     geom_rug(aes(x = GROUP_SIZE_LAST)) +
     geom_abline(slope = 1.0)
   
-  ggsave(p.pred,
+  ggsave(p.pred.UAS,
          filename = paste0("figures/UAS_GroupSizePredictions_", model.ver, ".png"),
          device = "png", dpi = 600)
   

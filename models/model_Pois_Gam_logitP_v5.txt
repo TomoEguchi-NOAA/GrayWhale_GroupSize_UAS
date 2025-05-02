@@ -1,14 +1,16 @@
 # A model to estimate the true group size of gray whales from visual
 # observations and some UAS sightings that match visual observations.
 #
-# Pois_Gam_v3: UAS group size observations are considered a Gamma random variable
+# Pois_Gam_v5: UAS group size observations are considered a Gamma random variable
+#              Visual observer group sizes are a Poisson variable with UAS group size
+#              and observer probability
 
 model{
 	
 	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(GS.UAS[i] * p.Vis[i])T(1,)   # Observed group size by visual observers
-		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(1,)   # Observed group size by UAS
+		GS.Vis[i] ~ dpois(GS.UAS[i] * p.Vis[i])T(GS.min.Vis[i], GS.max)   # Observed group size by visual observers
+		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i], GS.max)   # Observed group size by UAS
 	
 		logit(p.Vis[i]) <- B0 + B1 * Dist[i] + B2 * Bft[i] + B3 * Vis[i]+
 								Obs.RF[obs[i]]
@@ -22,8 +24,8 @@ model{
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
 	
-	alpha.UAS ~ dunif(0.01, 10)
-	beta.UAS ~ dunif(0.01, 10)
+	alpha.UAS <- 2.952 #~ dunif(0.01, 10)
+	beta.UAS <- 0.760 #~ dunif(0.01, 10)
 	
 	## Observer random effect
 	for(o in 1:n.obs){

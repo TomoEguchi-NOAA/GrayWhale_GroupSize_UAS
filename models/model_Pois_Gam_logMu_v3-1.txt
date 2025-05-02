@@ -1,16 +1,17 @@
 # A model to estimate the true group size of gray whales from visual
 # observations and some UAS sightings that match visual observations.
 #
-# Pois_Gam_v3: UAS group size observations are considered a Gamma random variable
+# Pois_Gam_v3-1: UAS group size observations are considered a Gamma random variable
+# Switches between groups with and without UAS sightings.
 
 model{
 	
 	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(mu.Vis[i])T(1,)   # Visually observed group size
-		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(1, GS.max)   # UAS-based group size
+		GS.Vis[i] ~ dpois(mu.Vis[i])T(GS.min.Vis[i], GS.max)   # Visually observed group size
+		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i], GS.max)   # UAS-based group size
 	
-		log(mu.Vis[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i]) * (1 - GS.I[i]) * (B5 * GS.min[i]))  + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] + Obs.RF[obs[i]]
+		log(mu.Vis[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i])) + ((1 - GS.I[i]) * (B5 * GS.min.Vis[i]))  + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] + Obs.RF[obs[i]]
 		
 		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu.Vis[i])
 	}
@@ -22,8 +23,9 @@ model{
 	B4 ~ dnorm(0, 0.1)
 	B5 ~ dnorm(0, 0.1)
 
-	alpha.UAS ~ dunif(0.01, 10)
-	beta.UAS ~ dunif(0.01, 10)
+	# these parameter values come from fitting the gamma to UAS group sizes
+	alpha.UAS <- 2.952 #~ dunif(0.01, 100)
+	beta.UAS <- 0.760 #~ dunif(0.01, 100)
 	
 	## Observer random effect
 	for(o in 1:n.obs){

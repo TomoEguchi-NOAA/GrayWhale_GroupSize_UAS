@@ -1,18 +1,23 @@
 # A model to estimate the true group size of gray whales from visual
 # observations and some UAS sightings that match visual observations.
 
+# Pois_v1: The simplest. Visual observers group size estimates come from a Poisson distribution
+#     truncated by the minimum and maximum. The mean is a function of UAS group size, 
+#     distance from the shore, Beaufort, visibility, and observers. 
+
 model{
 	
 	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(mu[i])T(1, GS.max)
+		GS.Vis[i] ~ dpois(mu[GS.min.Vis[i]]) T(GS.min.Vis[i], GS.max)
 	
+		# This is not going to work... it's redefining mu[i] here... 
 		log(mu[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
 								Obs.RF[obs[i]]
 	
 		#GS.UAS[i] ~ dpois(mu.UAS)
 		# GAM(1.5, 0.5) is mean = 3, var = 6
-		GS.UAS[i] ~ dgamma(1.5, 0.5)T(GS.min[i],GS.max)
+		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i], GS.max)
 		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu[i])
 	}
 	
@@ -22,8 +27,10 @@ model{
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
 	
+	alpha.UAS <- 2.952 #~ dunif(0.01, 10)
+	beta.UAS <- 0.760 #~ dunif(0.01, 10	
 	#mu.UAS ~ dgamma(1, 0.1)
-	
+		
 	## Observer random effect
 	for(o in 1:n.obs){
 		Obs.RF[o] ~ dnorm(0, tau.Obs)
