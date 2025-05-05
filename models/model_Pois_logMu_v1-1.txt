@@ -9,13 +9,15 @@ model{
 	
 	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(mu[GS.min.Vis[i]])T(GS.min.Vis[i], GS.max)
-	
-		log(mu[GS.min.Vis[i]]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i])) + ((1 - GS.I[i]) * (B5 * GS.min.Vis[i])) + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] + Obs.RF[obs[i]]
+		# Observed group size by visual observers is a Poisson deviate
+		# from the mean = the
+		GS.Vis[i] ~ dpois(mu.Vis[i])  #T(GS.min.Vis[i], GS.max)
 		
-		#GS.UAS[i] ~ dpois(mu.UAS)
-		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i], GS.max)
-		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu[GS.min.Vis[i]])
+		log(mu.Vis[i]) <- B0 + (GS.I[i] * (B1 * GS.UAS[i])) + ((1 - GS.I[i]) * (B5 * GS.min.Vis[i])) + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i] + Obs.RF[obs[i]]
+		
+		# GS.UAS is partially observed. 
+		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS) #T(GS.min.UAS[i], GS.max)
+		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu.Vis[i])
 	}
 	
 	B0 ~ dnorm(0, 0.1)

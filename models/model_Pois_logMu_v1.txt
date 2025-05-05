@@ -9,16 +9,17 @@ model{
 	
 	for (i in 1:n.grp){
 	
-		GS.Vis[i] ~ dpois(mu[GS.min.Vis[i]]) T(GS.min.Vis[i], GS.max)
+		# Visually observed group size is Poisson distributed with the mean mu.Vis[i]
+		GS.Vis[i] ~ dpois(mu.Vis[i]) #T(GS.min.Vis[i], GS.max)
 	
-		# This is not going to work... it's redefining mu[i] here... 
-		log(mu[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
+		# the mean (mu.Vis[i]) is a function of various covariates, including 
+		# UAS-based observations
+		log(mu.Vis[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
 								Obs.RF[obs[i]]
 	
-		#GS.UAS[i] ~ dpois(mu.UAS)
-		# GAM(1.5, 0.5) is mean = 3, var = 6
-		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i], GS.max)
-		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu[i])
+		# not all GS.UAS are observed (partially observed). So, it needs a prior
+		GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)
+		log.lkhd[i] <- logdensity.pois(GS.Vis[i], mu.Vis[i])
 	}
 	
 	B0 ~ dnorm(0, 0.1)

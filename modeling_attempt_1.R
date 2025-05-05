@@ -107,23 +107,32 @@ MCMC.params <- list(n.samples = 10000,
 
 # Index for whether or not there is a UAS-based group size
 #min.group.size <- Sightings$Group_Size_Min
-min.group.size <- Sightings$Group_Size_Min_Vis
+min.group.size.Vis <- Sightings$Group_Size_Min_Vis
 
-GS.I <- vector(mode = "numeric", length = length(min.group.size))
+GS.I <- vector(mode = "numeric", length = length(min.group.size.Vis))
 GS.I[!is.na(Sightings$Group_Size)] <- 1
 
 # Adjust the minimum group size. Minimum group size should be less than
 # the observed 
 #min.group.size[is.na(min.group.size)] <- 1
-min.group.size[min.group.size < 1] <- 1
+min.group.size.Vis[min.group.size.Vis < 1] <- 1
+
 min.group.size.UAS <- Sightings$Group_Size_Min
-min.group.size.UAS[is.na(min.group.size.UAS)] <- min.group.size[is.na(min.group.size.UAS)]
+min.group.size.UAS[is.na(min.group.size.UAS)] <- min.group.size.Vis[is.na(min.group.size.UAS)]
+
+min.group.size.df <- data.frame(UAS = min.group.size.UAS,
+                                Vis = Sightings$GROUP_SIZE_LAST)
+
+min.group.size <- apply(min.group.size.df, FUN = max, MARGIN = 1, na.rm = T)
 
 # group size categories
 GS.cat <- vector(mode = "numeric", length = length(min.group.size))
 GS.cat[Sightings$GROUP_SIZE_LAST < 3] <- 1
 GS.cat[Sightings$GROUP_SIZE_LAST > 2 & Sightings$GROUP_SIZE_LAST < 5] <- 2
 GS.cat[Sightings$GROUP_SIZE_LAST > 4] <- 3
+
+GS.min <- min.group.size.UAS
+GS.min[which((min.group.size.UAS - min.group.size) < 0)] <- Sightings$GROUP_SIZE_LAST[which((min.group.size.UAS - min.group.size) < 0)]
 
 jags.data <- list(n.grp = nrow(Sightings),
                   GS.Vis = Sightings$GROUP_SIZE_LAST,
@@ -132,8 +141,9 @@ jags.data <- list(n.grp = nrow(Sightings),
                   Bft = Sightings$BEAUFORT_LAST,
                   Vis = Sightings$VISIBILITY_LAST,
                   obs = Sightings$Obs.ID,
-                  GS.min.Vis = min.group.size,
+                  GS.min.Vis = min.group.size.Vis,
                   GS.min.UAS = min.group.size.UAS,
+                  GS.min = min.group.size,
                   GS.I = GS.I,
                   GS.max = max(Sightings$Group_Size, na.rm = T) + 5,
                   GS.cat = GS.cat,
@@ -141,7 +151,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v1-1"
+model.ver <- "v7"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -153,21 +163,22 @@ model.file <- switch(model.ver,
                      "v5" = "models/model_Pois_Gam_logitP_v5.txt",
                      "v6" = "models/model_Pois_Gam_logitP_v6.txt",
                      "v7" = "models/model_Binom_Gam_logitP_v7.txt",
-                     "v8" =  "models/model_Pois_pois_logitP_v8.txt")
+                     "v8" =  "models/model_Pois_pois_logitP_v8.txt",
+                     "v9" = "models/model_Gam_Gam_logMu_v9.txt")
 
 jags.params <- switch(model.ver,
-                      "v1" = c("GS.UAS", "mu", "B0", "B1", "B2",
-                               "B3", "B4", "mu.UAS", "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v1-1" = c("GS.UAS", "mu", "B0", "B1", "B2",
-                                 "B3", "B4", "B5", "mu", "mu.UAS", "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v2" = c("B0", "B1", "B2", "B3", "B4", 
+                      "v1" = c("GS.UAS", "B0", "B1", "B2",
+                               "B3", "B4", "mu.Vis", "Obs.RF", "sigma.Obs","log.lkhd"),
+                      "v1-1" = c("GS.UAS", "B0", "B1", "B2", "B3", "B4", "B5", 
+                                 "mu.Vis", "Obs.RF", "sigma.Obs","log.lkhd"),
+                      "v2" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
                                "GS.UAS", "mu.UAS","Obs.RF", "sigma.Obs", "log.lkhd"),
-                      "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5",
+                      "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.Vis",
                                  "GS.UAS", "mu.UAS", "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v3" = c("B0", "B1", "B2", "B3", "B4", 
+                      "v3" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
                                "GS.UAS", "alpha.UAS", "beta.UAS",
                                "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v3-1" = c("B0", "B1", "B2", "B3", "B4", "B5",
+                      "v3-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.Vis",
                                  "GS.UAS", "alpha.UAS", "beta.UAS",
                                  "Obs.RF", "sigma.Obs","log.lkhd"),
                       
@@ -179,14 +190,16 @@ jags.params <- switch(model.ver,
                       "v6" = c("B0", "B1", "B2", "B3", "B4", "p.Vis",
                                "GS.", "GS.UAS", "GS.Vis", 
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
-                      "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
-                               "B0.uas", "B1.uas", "B2.uas", "B3.uas",
-                               "GS.", "GS.UAS", "GS.Vis", "alpha.", "beta.",
+                      "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
+                               "GS.", "GS.UAS", "GS.Vis", "GS.mean", "p.UAS",
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v8" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
                                "B0.uas", "B1.uas", "B2.uas", "B3.uas",
                                "GS.", "GS.UAS", "GS.Vis", "mu.GS",
-                               "Obs.RF", "sigma.Obs", "log.lkhd"))
+                               "Obs.RF", "sigma.Obs", "log.lkhd"),
+                      "v9" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
+                               "GS.UAS", 
+                               "Obs.RF", "sigma.Obs","log.lkhd"))
 
 out.file.name <- paste0("RData/jm_out_", model.ver, ".rds")
 if (!file.exists(out.file.name)){
@@ -204,8 +217,6 @@ if (!file.exists(out.file.name)){
   jm <- readRDS(out.file.name)  
 }
 
-
-
 LOOIC <- compute.LOOIC(loglik.array = jm$sims.list$log.lkhd,
                        data.array = jags.data$GS.UAS,
                        MCMC.params = MCMC.params)
@@ -215,7 +226,7 @@ max.max.Rhat <- max(unlist(max.Rhat))
 
 params.to.plot <- switch(model.ver,
                          "v1" = c("B0", "B1", "B2", "B3", "B4", "sigma.Obs"),
-                         "v1-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.UAS", "sigma.Obs"),
+                         "v1-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "sigma.Obs"),
                          "v2" = c("B0", "B1", "B2", "B3", "B4", "mu.UAS", "sigma.Obs"),
                          "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.UAS", "sigma.Obs"),
                          "v3" = c("B0", "B1", "B2", "B3", "B4", 
@@ -225,11 +236,12 @@ params.to.plot <- switch(model.ver,
                          "v4" = c("B0", "B1", "B2", "B3", "mu.GS", "sigma.Obs"),
                          "v5" = c("B0", "B1", "B2", "B3", "alpha.UAS", "beta.UAS", "sigma.Obs"),
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
-                         "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", 
-                                  "B2.uas", "B3.uas", "alpha.", "beta.", "sigma.Obs"),
+                         "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "GS.mean", "sigma.Obs"),
                          "v8" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", 
                                   "B2.uas", "B3.uas", "mu.GS[1]",
-                                  "mu.GS[2]", "mu.GS[3]", "sigma.Obs"))
+                                  "mu.GS[2]", "mu.GS[3]", "sigma.Obs"),
+                         "v9" = c("B0", "B1", "B2", "B3", "B4", 
+                                   "sigma.Obs"))
 
 # The following two lines don't run for "v1-1" for some reason... 
 mcmc_trace(jm$samples,
@@ -238,6 +250,8 @@ mcmc_trace(jm$samples,
 mcmc_dens(jm$samples,
            params.to.plot)
 
+
+
 if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
   GS.UAS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
   mutate(y = dgamma(x, jm$mean$alpha.UAS, jm$mean$beta.UAS))
@@ -245,13 +259,25 @@ if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
   ggplot(GS.UAS.df) + 
     geom_line(aes(x = x, y = y)) +
     labs(x = "Group size", y = "Density")
-} else if (model.ver == "v6" | model.ver == "v7"){
+} else if (model.ver == "v6"){
+  # GAM(2.952, 0.760) comes from fitting the gamma to UAS group sizes
+  alpha. <- 2.952 #1.5
+  beta. <- 0.760 #0.5
   GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
-    mutate(y = dgamma(x, 1.5,0.5))
+    mutate(y = dgamma(x, alpha.,beta.))
   
   ggplot(GS.df) + 
     geom_line(aes(x = x, y = y)) +
     labs(x = "Group size", y = "Density")
+} else if (model.ver == "v7"){
+  beta. <- 1
+  GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
+    mutate(y = dgamma(x, jm$mean$GS.mean, beta.))
+  
+  ggplot(GS.df) + 
+    geom_line(aes(x = x, y = y)) +
+    labs(x = "Group size", y = "Density")
+  
 }
 
 if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
@@ -265,7 +291,10 @@ GS.UAS.pred <- data.frame(GS.UAS.mean = jm$mean$GS.UAS,
                           GS.UAS.low = jm$q2.5$GS.UAS,
                           GS.UAS.high = jm$q97.5$GS.UAS)
 
+
+
 if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
+  
   Sightings.pred <- cbind(Sightings, GS.UAS.pred, GS.pred)
   p.pred <- ggplot(Sightings.pred) + 
     # geom_point(aes(x = GROUP_SIZE_LAST,
@@ -290,18 +319,21 @@ if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
          device = "png", dpi = 600)
   
 } else {
+  GS.Vis.mean <- data.frame(GS.Vis.mean = jm$mean$mu.Vis,
+                            GS.Vis.low = jm$q2.5$mu.Vis,
+                            GS.Vis.high = jm$q97.5$mu.Vis)
   
-  Sightings.pred <- cbind(Sightings, GS.UAS.pred)
-  p.pred.UAS <- ggplot(Sightings.pred) + 
+  Sightings.pred <- cbind(Sightings, GS.UAS.pred, GS.Vis.mean)
+  p.pred.Vis <- ggplot(Sightings.pred) + 
     # geom_point(aes(x = GROUP_SIZE_LAST,
     #                y = GS.UAS.mean),
     #            color = "blue", size = 2) +
     geom_errorbar(aes(x = GROUP_SIZE_LAST,
-                      ymin = GS.UAS.low,
-                      ymax = GS.UAS.high),
+                      ymin = GS.Vis.low,
+                      ymax = GS.Vis.high),
                   color = "blue", alpha = 0.5) +
     geom_jitter(aes(x = GROUP_SIZE_LAST,
-                    y = GS.UAS.mean),
+                    y = GS.Vis.mean),
                 color = "blue", size = 2,
                 height = 0) +
     geom_jitter(aes(x = GROUP_SIZE_LAST, 
@@ -311,13 +343,33 @@ if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
     geom_rug(aes(x = GROUP_SIZE_LAST)) +
     geom_abline(slope = 1.0)
   
-  ggsave(p.pred.UAS,
-         filename = paste0("figures/UAS_GroupSizePredictions_", model.ver, ".png"),
+  ggsave(p.pred.Vis,
+         filename = paste0("figures/Vis_GroupSizePredictions_", model.ver, ".png"),
          device = "png", dpi = 600)
-  
 }
 
+p.pred.UAS <- ggplot(Sightings.pred) + 
+  # geom_point(aes(x = GROUP_SIZE_LAST,
+  #                y = GS.UAS.mean),
+  #            color = "blue", size = 2) +
+  geom_errorbar(aes(x = GROUP_SIZE_LAST,
+                    ymin = GS.UAS.low,
+                    ymax = GS.UAS.high),
+                color = "blue", alpha = 0.5) +
+  geom_jitter(aes(x = GROUP_SIZE_LAST,
+                  y = GS.UAS.mean),
+              color = "blue", size = 2,
+              height = 0) +
+  geom_jitter(aes(x = GROUP_SIZE_LAST, 
+                  y = Group_Size),
+              color = "red", alpha = 0.5,
+              height = 0) +
+  geom_rug(aes(x = GROUP_SIZE_LAST)) +
+  geom_abline(slope = 1.0)
 
+ggsave(p.pred.UAS,
+       filename = paste0("figures/UAS_GroupSizePredictions_", model.ver, ".png"),
+       device = "png", dpi = 600)
 
 # Extract posterior samples from jagsUI output
 # zm is the object that comes back from jags in jagsUI
@@ -337,7 +389,7 @@ extract.samples.jagsUI <- function(varname, jm){
 
 if (model.ver == "v6"){
   GS.samples.list <- extract.samples.jagsUI("GS.\\[", jm)  
-} else if (model.ver == "v1"){
+} else { #if (model.ver == "v1" | model.ver == "v1-1"){
   GS.samples.list <- extract.samples.jagsUI("GS.UAS\\[", jm)  
 }
 
