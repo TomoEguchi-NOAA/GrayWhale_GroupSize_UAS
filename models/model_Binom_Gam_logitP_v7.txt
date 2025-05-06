@@ -5,21 +5,15 @@
 #               observations are considered binomial - probably not going to work because
 #               some observations can be greater than the "true."
 
-# This doesn't work because the true group size needs to be truncated at greater than
-# the observed group size (GS.UAS or GS.Vis) in order to the binomial likelihood to work... 
-
 model{
 	
 	for (i in 1:n.grp){
 			
 		# True group size
-		#GS.[i] ~ dgamma(GS.alpha, 0.1) #T(GS.min[i], GS.max)   
-		
-		GS.[i] ~ dpois(GS.mean)T(GS.min[i], GS.max)
+		GS.[i] ~ dgamma(GS.alpha, 1) #T(GS.min[i], GS.max)   
+				
 		GS.Vis[i] ~ dbin(p.Vis[i], round(GS.[i])) # Observed group size by visual observers
-		
-		#GS.UAS[i] ~ dgamma(alpha.UAS, beta.UAS)T(GS.min.UAS[i],GS.max)     # Observed group size by UAS
-		
+				
 		GS.UAS[i] ~ dbin(p.UAS[i], round(GS.[i])) 
 		
 		logit(p.Vis[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
@@ -35,8 +29,8 @@ model{
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
-	GS.mean ~ dunif(1, GS.max)
-	#GS.alpha ~ dunif(10, 200)
+	#GS.mean ~ dunif(1, GS.max)
+	GS.alpha ~ dunif(11, 20)
 	#GS.mean <- GS.alpha * 0.1
 	
 	B0.uas ~ dnorm(0, 0.1)

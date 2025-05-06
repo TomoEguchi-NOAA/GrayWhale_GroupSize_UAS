@@ -145,16 +145,17 @@ jags.data <- list(n.grp = nrow(Sightings),
                   GS.min.UAS = min.group.size.UAS,
                   GS.min = min.group.size,
                   GS.I = GS.I,
-                  GS.max = max(Sightings$Group_Size, na.rm = T) + 5,
+                  GS.max = max(Sightings$Group_Size_Min, na.rm = T) + 5,
                   GS.cat = GS.cat,
                   n.obs = nrow(uniq.obs.df))
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v7"
+model.ver <- "v2-1"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
+                     "v1-2" = "models/model_Pois_logMu_v1-2.txt",
                      "v2" = "models/model_Pois_Pois_logMu_v2.txt",  
                      "v2-1" = "models/model_Pois_Pois_logMu_v2-1.txt",
                      "v3" = "models/model_Pois_Gam_logMu_v3.txt",
@@ -170,6 +171,8 @@ jags.params <- switch(model.ver,
                       "v1" = c("GS.UAS", "B0", "B1", "B2",
                                "B3", "B4", "mu.Vis", "Obs.RF", "sigma.Obs","log.lkhd"),
                       "v1-1" = c("GS.UAS", "B0", "B1", "B2", "B3", "B4", "B5", 
+                                 "mu.Vis", "Obs.RF", "sigma.Obs","log.lkhd"),
+                      "v1-2" = c("GS.UAS", "B0", "B1",
                                  "mu.Vis", "Obs.RF", "sigma.Obs","log.lkhd"),
                       "v2" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
                                "GS.UAS", "mu.UAS","Obs.RF", "sigma.Obs", "log.lkhd"),
@@ -191,11 +194,11 @@ jags.params <- switch(model.ver,
                                "GS.", "GS.UAS", "GS.Vis", 
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
-                               "GS.", "GS.UAS", "GS.Vis", "GS.mean", "p.UAS",
-                               "Obs.RF", "sigma.Obs", "log.lkhd"),
+                               "GS.", "GS.UAS", "GS.Vis", "p.UAS",
+                               "Obs.RF", "GS.alpha", "sigma.Obs", "log.lkhd"),
                       "v8" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
-                               "B0.uas", "B1.uas", "B2.uas", "B3.uas",
-                               "GS.", "GS.UAS", "GS.Vis", "mu.GS",
+                               #"B0.uas", "B1.uas", "B2.uas", "B3.uas",
+                               "GS.", "GS.UAS", "GS.Vis", "GS.mean",
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v9" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
                                "GS.UAS", 
@@ -227,6 +230,7 @@ max.max.Rhat <- max(unlist(max.Rhat))
 params.to.plot <- switch(model.ver,
                          "v1" = c("B0", "B1", "B2", "B3", "B4", "sigma.Obs"),
                          "v1-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "sigma.Obs"),
+                         "v1-2" = c("B0", "B1",  "sigma.Obs"),
                          "v2" = c("B0", "B1", "B2", "B3", "B4", "mu.UAS", "sigma.Obs"),
                          "v2-1" = c("B0", "B1", "B2", "B3", "B4", "B5", "mu.UAS", "sigma.Obs"),
                          "v3" = c("B0", "B1", "B2", "B3", "B4", 
@@ -236,10 +240,10 @@ params.to.plot <- switch(model.ver,
                          "v4" = c("B0", "B1", "B2", "B3", "mu.GS", "sigma.Obs"),
                          "v5" = c("B0", "B1", "B2", "B3", "alpha.UAS", "beta.UAS", "sigma.Obs"),
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
-                         "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "GS.mean", "sigma.Obs"),
-                         "v8" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", 
-                                  "B2.uas", "B3.uas", "mu.GS[1]",
-                                  "mu.GS[2]", "mu.GS[3]", "sigma.Obs"),
+                         "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
+                                  "GS.alpha"),
+                         "v8" = c("B0", "B1", "B2", "B3", "B4", "GS.mean",
+                                  "sigma.Obs"),
                          "v9" = c("B0", "B1", "B2", "B3", "B4", 
                                    "sigma.Obs"))
 
@@ -270,9 +274,9 @@ if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
     geom_line(aes(x = x, y = y)) +
     labs(x = "Group size", y = "Density")
 } else if (model.ver == "v7"){
-  beta. <- 1
+  beta. <- 1.0
   GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
-    mutate(y = dgamma(x, jm$mean$GS.mean, beta.))
+    mutate(y = dgamma(x, jm$mean$GS.alpha, beta.))
   
   ggplot(GS.df) + 
     geom_line(aes(x = x, y = y)) +
