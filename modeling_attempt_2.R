@@ -155,7 +155,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v2"
+model.ver <- "v8"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -189,19 +189,19 @@ jags.params <- switch(model.ver,
                                  "GS.UAS", "alpha.UAS", "beta.UAS",
                                  "Obs.RF", "sigma.Obs","log.lkhd"),
                       
-                      "v4" = c("B0", "B1", "B2", "B3", "p.Vis",
+                      "v4" = c("B0", "B1", "B2", "B3", "p.Vis", "mu.Vis",
                                "GS.UAS", "mu.GS", "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v5" = c("B0", "B1", "B2", "B3", "p.Vis",
-                               "GS.UAS", "alpha.UAS", "beta.UAS",
-                               "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v6" = c("B0", "B1", "B2", "B3", "B4", "p.Vis",
+                      "v5" = c("B0", "B1", "B2", "B3", "p.Vis", "mu.Vis",
+                               "GS.UAS", "Obs.RF", "sigma.Obs","log.lkhd"),
+                      "v6" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "mu.Vis",
                                "GS.", "GS.UAS", "GS.Vis", 
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
                                "GS.", "GS.UAS", "GS.Vis", "p.UAS",
                                "Obs.RF", "GS.alpha", "sigma.Obs", "log.lkhd"),
                       "v8" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
-                               #"B0.uas", "B1.uas", "B2.uas", "B3.uas",
+                               "mu.Vis",
+                               "B0.uas", #"B1.uas", "B2.uas", "B3.uas",
                                "GS.", "GS.UAS", "GS.Vis", "GS.mean",
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v9" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
@@ -242,11 +242,11 @@ params.to.plot <- switch(model.ver,
                          "v3-1"= c("B0", "B1", "B2", "B3", "B4", "B5", 
                                    "alpha.UAS", "beta.UAS", "sigma.Obs"),
                          "v4" = c("B0", "B1", "B2", "B3", "mu.GS", "sigma.Obs"),
-                         "v5" = c("B0", "B1", "B2", "B3", "alpha.UAS", "beta.UAS", "sigma.Obs"),
+                         "v5" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
                                   "GS.alpha"),
-                         "v8" = c("B0", "B1", "B2", "B3", "B4", "GS.mean",
+                         "v8" = c("B0", "B1", "B2", "B3", "GS.mean",
                                   "sigma.Obs"),
                          "v9" = c("B0", "B1", "B2", "B3", "B4", 
                                   "sigma.Obs"))
@@ -260,7 +260,7 @@ mcmc_dens(jm$samples,
 
 
 
-if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
+if (model.ver == "v3" | model.ver == "v3-1"){
   GS.UAS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
     mutate(y = dgamma(x, jm$mean$alpha.UAS, jm$mean$beta.UAS))
   
