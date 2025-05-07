@@ -12,7 +12,8 @@ model{
 		GS.[i] ~ dgamma(alpha., beta.)T(GS.min.Vis[i],GS.max)   
 	
 		# Observed group size by visual observers
-		GS.Vis[i] ~ dpois(GS.[i] * p.Vis[i])T(GS.min.Vis[i], GS.max)
+		GS.Vis[i] ~ dpois(mu.Vis[i])T(GS.min.Vis[i], GS.max)
+		mu.Vis[i] <- GS.[i] * p.Vis[i]
 		
 		# Observed group size by UAS with p.UAS = 1.0
 		GS.UAS[i] ~ dpois(GS.[i] * p.UAS[i] )T(GS.min.UAS[i],GS.max)   

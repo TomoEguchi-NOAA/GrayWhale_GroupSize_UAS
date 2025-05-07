@@ -12,7 +12,8 @@ model{
 		GS.[i] ~ dpois(GS.mean)T(GS.min[i], GS.max)   
 	
 		# Observed group size by visual observers
-		GS.Vis[i] ~ dpois(GS.[i] * p.Vis[i])T(GS.min.Vis[i],GS.max)
+		GS.Vis[i] ~ dpois(mu.Vis[i])T(GS.min.Vis[i],GS.max)
+		mu.Vis[i] <- GS.[i] * p.Vis[i]
 		
 		# Observed group size by UAS
 		GS.UAS[i] ~ dpois(GS.[i] * p.UAS[i] )T(GS.min.UAS[i],GS.max)   
@@ -31,12 +32,12 @@ model{
 	B1 ~ dnorm(0, 0.1)
 	B2 ~ dnorm(0, 0.1)
 	B3 ~ dnorm(0, 0.1)
-	B4 ~ dnorm(0, 0.1)
+	#B4 ~ dnorm(0, 0.1)
 
 	B0.uas ~ dnorm(0, 0.1)
-	B1.uas ~ dnorm(0, 0.1)
-	B2.uas ~ dnorm(0, 0.1)
-	B3.uas ~ dnorm(0, 0.1)
+	#B1.uas ~ dnorm(0, 0.1)
+	#B2.uas ~ dnorm(0, 0.1)
+	#B3.uas ~ dnorm(0, 0.1)
 	
 	GS.mean ~ dunif(1, GS.max)
 		
