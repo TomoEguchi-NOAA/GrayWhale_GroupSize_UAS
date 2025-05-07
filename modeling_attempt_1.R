@@ -151,7 +151,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v2-1"
+model.ver <- "v8"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -185,13 +185,13 @@ jags.params <- switch(model.ver,
                                  "GS.UAS", "alpha.UAS", "beta.UAS",
                                  "Obs.RF", "sigma.Obs","log.lkhd"),
                       
-                      "v4" = c("B0", "B1", "B2", "B3", "p.Vis",
+                      "v4" = c("B0", "B1", "B2", "B3", "p.Vis", "mu.Vis",
                                "GS.UAS", "mu.GS", "Obs.RF", "sigma.Obs","log.lkhd"),
-                      "v5" = c("B0", "B1", "B2", "B3", "p.Vis",
+                      "v5" = c("B0", "B1", "B2", "B3", "p.Vis", "mu.Vis",
                                "GS.UAS", "alpha.UAS", "beta.UAS",
                                "Obs.RF", "sigma.Obs","log.lkhd"),
                       "v6" = c("B0", "B1", "B2", "B3", "B4", "p.Vis",
-                               "GS.", "GS.UAS", "GS.Vis", 
+                               "GS.", "GS.UAS", "GS.Vis", "mu.Vis",
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
                                "GS.", "GS.UAS", "GS.Vis", "p.UAS",
@@ -242,7 +242,7 @@ params.to.plot <- switch(model.ver,
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
                                   "GS.alpha"),
-                         "v8" = c("B0", "B1", "B2", "B3", "B4", "GS.mean",
+                         "v8" = c("B0", "B1", "B2", "B3", "GS.mean",
                                   "sigma.Obs"),
                          "v9" = c("B0", "B1", "B2", "B3", "B4", 
                                    "sigma.Obs"))
