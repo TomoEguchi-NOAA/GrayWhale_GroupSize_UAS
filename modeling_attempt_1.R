@@ -151,7 +151,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v8"
+model.ver <- "v6"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -214,10 +214,17 @@ if (!file.exists(out.file.name)){
              n.iter = MCMC.params$n.samples,
              parallel = T,
              DIC = T)  
-  saveRDS(jm, file = out.file.name)
+  
+  jm.out <- list(jm = jm,
+                 jags.data = jags.data,
+                 jags.params = jags.params,
+                 MCMC.params = MCMC.params)
+  saveRDS(jm.out, file = out.file.name)
 
 } else {
-  jm <- readRDS(out.file.name)  
+  jm.out <- readRDS(out.file.name)  
+  jm <- jm.out$jm
+  
 }
 
 LOOIC <- compute.LOOIC(loglik.array = jm$sims.list$log.lkhd,
