@@ -12,6 +12,46 @@ rm(list = ls())
 library(tidyverse)
 library(ggplot2)
 library(ggridges)
+library(loo)
+compute.LOOIC <- function(loglik.array, data.array, MCMC.params){
+  n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+  
+  # Convert the log-likelihood and data arrays into vectors
+  loglik.vec <- c(loglik.array)
+  data.vec <- c(data.array)
+  
+  # Convert the log-likelihood vector into a 2D array
+  n.data <- length(data.vec)
+  loglik.mat <- array(loglik.vec, 
+                      c((n.per.chain * MCMC.params$n.chains), n.data))
+  
+  # remove the log-likelihood values that correspond to NA data points
+  loglik.mat <- loglik.mat[, !is.na(data.vec)]
+  
+  # Also, some of data points (0s) were unobserved and no log likelihood values
+  # exist
+  colsums.loglik <- colSums(loglik.mat)
+  loglik.mat <- loglik.mat[, !is.na(colsums.loglik)]
+  
+  # remove NAs in the data vector
+  #data.vec <- data.vec[!is.na(data.vec)]
+  
+  Reff <- relative_eff(exp(loglik.mat),
+                       chain_id = rep(1:MCMC.params$n.chains,
+                                      each = n.per.chain),
+                       cores = 4)
+  
+  loo.out <- rstanarm::loo(loglik.mat, 
+                           r_eff = Reff, 
+                           cores = 4, k_threshold = 0.7)
+  
+  out.list <- list(Reff = Reff,
+                   loo.out = loo.out)
+  
+  return(out.list)  
+}
+
+
 save.fig <- FALSE #TRUE
 ```
 
@@ -143,13 +183,12 @@ There were `r nrow(Sightings.1)` records in the 2025 dataset. Group sizes were d
 
 ![Differences in estimated group size between UAS-based counts and visual observers.](figures/dif_hist.png){#fig-dif-hist}
 
-Visual observers recorded group sizes of less than 7 except one group, which was 12 (Figure @fig-group-size). To eliminate the influence of the observed group size of 12, I also ran the same analyses using data with group sizes less than 7.
+Visual observers recorded group sizes of less than 7 except one group, which was 12 (Figure @fig-group-size), whereas UAS-based counts included group sizes of 7, 8, and 9. Without records from visual observers, predictions cannot be made for those group sizes. To eliminate the influence of the observed group size of 12, I also ran the same analyses using only data with group sizes less than 7.
 
 
 ![Distributions of observed group sizes by visual observers (yellow) and through UAS video footage (purple).](figures/group_size.png){#fig-group-size}
 
-
-All models were run using JAGS in R with the *jagsUI* package. Goodness of fit was determined using the Pareto-k statistic using the *loo* package. Convergence of Markov chain Monte Carlo (MCMC) was determined using the $\hat{R}$ statistic.
+All models were run using JAGS in R with the *jagsUI* package. Goodness of fit was determined with the Pareto-k statistic using the *loo* package. Convergence of Markov chain Monte Carlo (MCMC) was determined using the $\hat{R}$ statistic.
 
 ### Model 1
 
@@ -192,7 +231,22 @@ plot.ridges <- function(x, levels = c("1", "2", "3", "4",
               n = n.)  
 }
 
+model.comp <- data.frame(Model = c(NA, NA, NA),
+                         LOOIC = c(NA, NA, NA),
+                         Bad_Pareto = c(NA, NA, NA),
+                         Max_Rhat = c(NA, NA, NA))
+
 jm.out <- readRDS("RData/jm_out_v3.rds")
+
+LOOIC.v3 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                          data.array = jm.out$jags.data$GS.UAS,
+                          MCMC.params = jm.out$MCMC.params)
+
+model.comp[1,] <- c("1", 
+                    LOOIC.v3$loo.out$estimates[3,1],
+                    sum(between(LOOIC.v3$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                    max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
+
 out.v3 <- plot.ridges("RData/jm_out_v3.rds")
 
 if (save.fig)
@@ -210,10 +264,24 @@ Convergence was reached for all parameters ($Max(\hat{R}) = $ `r max(unlist(lapp
 
 ```{r}
 #| echo: false
+model.comp.max6 <- data.frame(Model = c(NA, NA, NA),
+                              LOOIC = c(NA, NA, NA),
+                              Bad_Pareto = c(NA, NA, NA),
+                              Max_Rhat = c(NA, NA, NA))
+
 jm.out <- readRDS("RData/jm_out_v3_max6.rds")
+
+LOOIC.v3.max6 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                               data.array = jm.out$jags.data$GS.UAS,
+                               MCMC.params = jm.out$MCMC.params)
+
+model.comp.max6[1,] <- c("1", 
+                         LOOIC.v3.max6$loo.out$estimates[3,1],
+                         sum(between(LOOIC.v3.max6$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                         max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
 ```
 
-For the dataset with group sizes < 7, convergence was reached for all parameters ($Max(\hat{R}) = $ `r max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T)))`). One data point indicated a large Pareto-k statistic, indicating ill fit of the model. The conditional posterior distributions of the predicted UAS counts indicated a similar pattern to what was observed for the full dataset (@fig-group-size-v3-max6).  
+For the dataset with group sizes < 7, convergence was reached for all parameters ($Max(\hat{R}) = $ `r signif(max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))), 3)`). One data point indicated a large Pareto-k statistic, indicating the data point did not fit well to the model. The conditional posterior distributions of the predicted UAS counts indicated a similar pattern to what was observed for the full dataset (@fig-group-size-v3-max6).  
 
 ![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 using Model 1.](figures/group_size_posteriors_v3_max6.png){#fig-group-size-v3-max6}
 
@@ -238,11 +306,17 @@ if (save.fig)
 ```{r}
 #| echo: false
 jm.out <- readRDS("RData/jm_out_v5.rds")
+
+LOOIC.v5 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                          data.array = jm.out$jags.data$GS.UAS,
+                          MCMC.params = jm.out$MCMC.params)
+
+model.comp[2,] <- c("2", 
+                    LOOIC.v5$loo.out$estimates[3,1],
+                    sum(between(LOOIC.v5$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                    max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
+
 out.v5 <- plot.ridges("RData/jm_out_v5.rds")
-out.v5.max6 <- plot.ridges("RData/jm_out_v5_max6.rds",
-                           levels = c("1", "2", "3", "4", 
-                                      "5", "6"),
-                           bandwidth = 0.25)
 
 
 if (save.fig)
@@ -252,6 +326,27 @@ if (save.fig)
          dpi = 600)
 
 
+```
+
+
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 2.](figures/group_size_posteriors_v5.png){#fig-group-size-v5}
+
+```{r}
+jm.out <- readRDS("RData/jm_out_v5_max6.rds")
+
+LOOIC.v5.max6 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                               data.array = jm.out$jags.data$GS.UAS,
+                               MCMC.params = jm.out$MCMC.params)
+
+model.comp.max6[2,] <- c("2", 
+                         LOOIC.v5.max6$loo.out$estimates[3,1],
+                         sum(between(LOOIC.v5.max6$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                         max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
+
+out.v5.max6 <- plot.ridges("RData/jm_out_v5_max6.rds",
+                           levels = c("1", "2", "3", "4", 
+                                      "5", "6"),
+                           bandwidth = 0.25)
 
 if (save.fig)
   ggsave(plot = out.v5.max6$plot, 
@@ -259,9 +354,6 @@ if (save.fig)
          device = "png",
          dpi = 600)
 ```
-
-
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 2.](figures/group_size_posteriors_v5.png){#fig-group-size-v5}
 
 
 ![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 using Model 2.](figures/group_size_posteriors_v5_max6.png){#fig-group-size-v5-max6}
@@ -310,12 +402,17 @@ plot.ridges.2 <- function(x, levels = c("1", "2", "3", "4",
 
 jm.out <- readRDS("RData/jm_out_v6.rds")
 
+LOOIC.v6 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                          data.array = jm.out$jags.data$GS.UAS,
+                          MCMC.params = jm.out$MCMC.params)
+
+model.comp[3,] <- c("3", 
+                    LOOIC.v6$loo.out$estimates[3,1],
+                    sum(between(LOOIC.v6$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                    max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
+
 out.v6 <- plot.ridges.2("RData/jm_out_v6.rds",
                       bandwidth = 0.3)
-out.v6.max6 <- plot.ridges.2("RData/jm_out_v6_max6.rds",
-                           levels = c("1", "2", "3", "4", 
-                                      "5", "6"),
-                           bandwidth = 0.25)
 
 if (save.fig)
   ggsave(plot = out.v6$plot, 
@@ -325,15 +422,36 @@ if (save.fig)
 
 
 
+```
+
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 3.](figures/group_size_posteriors_v6.png){#fig-group-size-v6}
+
+
+```{r}
+#| echo: false
+jm.out <- readRDS("RData/jm_out_v6_max6.rds")
+
+LOOIC.v6.max6 <- compute.LOOIC(loglik.array = jm.out$jm$sims.list$log.lkhd,
+                               data.array = jm.out$jags.data$GS.UAS,
+                               MCMC.params = jm.out$MCMC.params)
+
+model.comp.max6[3,] <- c("3", 
+                         LOOIC.v6.max6$loo.out$estimates[3,1],
+                         sum(between(LOOIC.v6.max6$loo.out$diagnostics$pareto_k, 0.63, Inf)),
+                         max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
+
+
+out.v6.max6 <- plot.ridges.2("RData/jm_out_v6_max6.rds",
+                           levels = c("1", "2", "3", "4", 
+                                      "5", "6"),
+                           bandwidth = 0.25)
 if (save.fig)
   ggsave(plot = out.v6.max6$plot, 
          filename = "figures/group_size_posteriors_v6_max6.png",
          device = "png",
          dpi = 600)
 
+
 ```
 
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 3.](figures/group_size_posteriors_v6.png){#fig-group-size-v6}
-
-
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 using Model 3.](figures/group_size_posteriors_v6_max6.png){#fig-group-size-v6-max6}
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 and using Model 3.](figures/group_size_posteriors_v6_max6.png){#fig-group-size-v6-max6}
