@@ -42,8 +42,9 @@ model{
 	
 	# GAM(1.5, 0.5) is mean = 3, var = 6
 	# GAM(2.952, 0.760) comes from fitting the gamma to UAS group sizes
-	alpha. <- 2.952 #1.5
-	beta. <- 0.760 #0.5
+	d.alpha ~ dunif(0.01, 5)
+	beta. ~ dunif(0.5, 1) #0.760 #0.5
+	alpha. <- beta. + d.alpha #2.952 #1.5	
 	
 	## Observer random effect
 	for(o in 1:n.obs){

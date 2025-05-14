@@ -155,7 +155,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v6"
+model.ver <- "v7"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -386,46 +386,89 @@ ggsave(p.pred.UAS,
        filename = paste0("figures/UAS_GroupSizePredictions_", model.ver, "_max6.png"),
        device = "png", dpi = 600)
 
-# Extract posterior samples from jagsUI output
-# zm is the object that comes back from jags in jagsUI
-# Do not include the index, e.g., [1], [2], etc.
-extract.samples.jagsUI <- function(varname, jm){
-  par.names <- unlist(dimnames(jm$samples[[1]])[2])
-  col.idx <- grep(varname, par.names)    
-  samples.list <- list()
+
+plot.ridges.2 <- function(x, levels = c("1", "2", "3", "4", 
+                                        "5", "6", "7", "8", 
+                                        "9", "12"),
+                          bandwidth = 0.12){
+  jm.out <- readRDS(x)
   
-  samples <- lapply(jm$samples, FUN = function(x) x[, col.idx])
-  # for (k in 1:length(col.idx)){
-  #   samples.list[[k]] <- unlist(lapply(samples, FUN = function(x) x[,k]))
-  # }
+  n.UAS <- jm.out$jm$sims.list$GS.
+  n.Vis <- jm.out$jags.data$GS.Vis
   
-  return(samples)
+  Sightings. <- data.frame(UAS = jm.out$jags.data$GS.UAS,
+                           Vis = jm.out$jags.data$GS.Vis) %>%
+    na.omit() %>%
+    mutate(Vis.f = factor(Vis, levels = levels))
+  
+  n. <- data.frame(UAS = as.vector(n.UAS),
+                   Vis = rep(n.Vis, each = nrow(n.UAS))) %>%
+    mutate(Vis.f = factor(Vis, levels = levels))
+  
+  p.ridges <- ggplot() +
+    # geom_density_ridges(data = Sightings.2,
+    #                     aes(x = UAS, y = Vis.f)) +
+    geom_density_ridges(data = n.,
+                        aes(x = UAS, y = Vis.f, fill = Vis.f),
+                        bandwidth = bandwidth) +
+    geom_jitter(data = Sightings.,
+                aes(x = UAS, y = Vis.f, color = Vis.f),
+                width = 0) +
+    geom_abline(slope = 1.0) +
+    theme(legend.position = "none") +
+    ylab("Visual group size") +
+    xlab("Group size")
+  
+  out <- list(plot = p.ridges,
+              sightings = Sightings.,
+              n = n.)  
 }
 
-if (model.ver == "v6"){
-  GS.samples.list <- extract.samples.jagsUI("GS.\\[", jm)  
-} else { #if (model.ver == "v1" | model.ver == "v1-1"){
-  GS.samples.list <- extract.samples.jagsUI("GS.UAS\\[", jm)  
-}
+out. <- plot.ridges.2(out.file.name,
+                      levels = c("1", "2", "3", "4", 
+                                          "5", "6"),
+                      bandwidth = 0.3)
 
-k <- 7
-GS.Vis.samples <- list()
-GS.plots <- list()
-GS.median <- vector(mode = "numeric")
-for (k in 1:9){
-  GS.Vis.samples[[k]] <- lapply(GS.samples.list, 
-                                FUN = function(x){
-                                  x[, which(jags.data$GS.Vis == k)]}) %>% unlist()
-  
-  #tmp <- GS.Vis.samples[[k]] %>% unlist()  
-  
-  GS.samples <- data.frame(GS = GS.Vis.samples[[k]])
-  GS.median[k] <- median(GS.Vis.samples[[k]])
-  GS.plots[[k]] <- ggplot(GS.samples) + 
-    geom_histogram(aes(x = GS),
-                   binwidth = 1) +
-    labs(title = paste0("Visual group size = ", k))
-}
-
-GS.median.df <- data.frame(Vis.GS = c(1:9),
-                           GS.median = GS.median)
+# # Extract posterior samples from jagsUI output
+# # zm is the object that comes back from jags in jagsUI
+# # Do not include the index, e.g., [1], [2], etc.
+# extract.samples.jagsUI <- function(varname, jm){
+#   par.names <- unlist(dimnames(jm$samples[[1]])[2])
+#   col.idx <- grep(varname, par.names)    
+#   samples.list <- list()
+#   
+#   samples <- lapply(jm$samples, FUN = function(x) x[, col.idx])
+#   # for (k in 1:length(col.idx)){
+#   #   samples.list[[k]] <- unlist(lapply(samples, FUN = function(x) x[,k]))
+#   # }
+#   
+#   return(samples)
+# }
+# 
+# if (model.ver == "v6"){
+#   GS.samples.list <- extract.samples.jagsUI("GS.\\[", jm)  
+# } else { #if (model.ver == "v1" | model.ver == "v1-1"){
+#   GS.samples.list <- extract.samples.jagsUI("GS.UAS\\[", jm)  
+# }
+# 
+# k <- 7
+# GS.Vis.samples <- list()
+# GS.plots <- list()
+# GS.median <- vector(mode = "numeric")
+# for (k in 1:9){
+#   GS.Vis.samples[[k]] <- lapply(GS.samples.list, 
+#                                 FUN = function(x){
+#                                   x[, which(jags.data$GS.Vis == k)]}) %>% unlist()
+#   
+#   #tmp <- GS.Vis.samples[[k]] %>% unlist()  
+#   
+#   GS.samples <- data.frame(GS = GS.Vis.samples[[k]])
+#   GS.median[k] <- median(GS.Vis.samples[[k]])
+#   GS.plots[[k]] <- ggplot(GS.samples) + 
+#     geom_histogram(aes(x = GS),
+#                    binwidth = 1) +
+#     labs(title = paste0("Visual group size = ", k))
+# }
+# 
+# GS.median.df <- data.frame(Vis.GS = c(1:9),
+#                            GS.median = GS.median)

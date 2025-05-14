@@ -10,7 +10,7 @@ model{
 	for (i in 1:n.grp){
 			
 		# True group size
-		GS.[i] ~ dgamma(GS.alpha, 1) #T(GS.min[i], GS.max)   
+		GS.[i] ~ dgamma(GS.alpha, 1) T(GS.min[i],GS.max)   
 				
 		GS.Vis[i] ~ dbin(p.Vis[i], round(GS.[i])) # Observed group size by visual observers
 				
@@ -19,6 +19,7 @@ model{
 		logit(p.Vis[i]) <- B0 + B1 * GS.UAS[i] + B2 * Dist[i] + B3 * Bft[i] + B4 * Vis[i]+
 								Obs.RF[obs[i]]
 		
+		#p.UAS[i] <- 1.0
 		logit(p.UAS[i]) <- B0.uas #+ B2.uas * Bft[i] + B3.uas * Vis[i]
 		
 		log.lkhd[i] <- logdensity.bin(GS.Vis[i], p.Vis[i], round(GS.[i]))
@@ -30,7 +31,7 @@ model{
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
 	#GS.mean ~ dunif(1, GS.max)
-	GS.alpha ~ dunif(11, 20)
+	GS.alpha ~ dunif(1, 20)
 	#GS.mean <- GS.alpha * 0.1
 	
 	B0.uas ~ dnorm(0, 0.1)

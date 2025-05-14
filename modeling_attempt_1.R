@@ -151,7 +151,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v6"
+model.ver <- "v7"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -398,11 +398,52 @@ extract.samples.jagsUI <- function(varname, jm){
   return(samples)
 }
 
-if (model.ver == "v6"){
+if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
   GS.samples.list <- extract.samples.jagsUI("GS.\\[", jm)  
 } else { #if (model.ver == "v1" | model.ver == "v1-1"){
   GS.samples.list <- extract.samples.jagsUI("GS.UAS\\[", jm)  
 }
+
+plot.ridges.2 <- function(x, levels = c("1", "2", "3", "4", 
+                                        "5", "6", "7", "8", 
+                                        "9", "12"),
+                          bandwidth = 0.12){
+  jm.out <- readRDS(x)
+  
+  n.UAS <- jm.out$jm$sims.list$GS.
+  n.Vis <- jm.out$jags.data$GS.Vis
+  
+  Sightings. <- data.frame(UAS = jm.out$jags.data$GS.UAS,
+                           Vis = jm.out$jags.data$GS.Vis) %>%
+    na.omit() %>%
+    mutate(Vis.f = factor(Vis, levels = levels))
+  
+  n. <- data.frame(UAS = as.vector(n.UAS),
+                   Vis = rep(n.Vis, each = nrow(n.UAS))) %>%
+    mutate(Vis.f = factor(Vis, levels = levels))
+  
+  p.ridges <- ggplot() +
+    # geom_density_ridges(data = Sightings.2,
+    #                     aes(x = UAS, y = Vis.f)) +
+    geom_density_ridges(data = n.,
+                        aes(x = UAS, y = Vis.f, fill = Vis.f),
+                        bandwidth = bandwidth) +
+    geom_jitter(data = Sightings.,
+                aes(x = UAS, y = Vis.f, color = Vis.f),
+                width = 0) +
+    geom_abline(slope = 1.0) +
+    theme(legend.position = "none") +
+    ylab("Visual group size") +
+    xlab("Group size")
+  
+  out <- list(plot = p.ridges,
+              sightings = Sightings.,
+              n = n.)  
+}
+
+out. <- plot.ridges.2(out.file.name,
+                        bandwidth = 0.3)
+
 
 k <- 7
 GS.Vis.samples <- list()
