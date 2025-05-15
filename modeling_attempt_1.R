@@ -22,6 +22,7 @@ library(ggplot2)
 library(jagsUI)
 library(bayesplot)
 library(loo)
+library(ggridges)
 
 compute.LOOIC <- function(loglik.array, data.array, MCMC.params){
   n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
@@ -195,7 +196,7 @@ jags.params <- switch(model.ver,
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
                                "GS.", "GS.UAS", "GS.Vis", "p.UAS",
-                               "Obs.RF", "GS.alpha", "sigma.Obs", "log.lkhd"),
+                               "Obs.RF", "alpha.", "beta.", "sigma.Obs", "log.lkhd"),
                       "v8" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
                                #"B0.uas", "B1.uas", "B2.uas", "B3.uas",
                                "GS.", "GS.UAS", "GS.Vis", "GS.mean",
@@ -248,7 +249,7 @@ params.to.plot <- switch(model.ver,
                          "v5" = c("B0", "B1", "B2", "B3", "alpha.UAS", "beta.UAS", "sigma.Obs"),
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
-                                  "GS.alpha"),
+                                  "alpha.", "beta."),
                          "v8" = c("B0", "B1", "B2", "B3", "GS.mean",
                                   "sigma.Obs"),
                          "v9" = c("B0", "B1", "B2", "B3", "B4", 
@@ -283,7 +284,7 @@ if (model.ver == "v5" | model.ver == "v3" | model.ver == "v3-1"){
 } else if (model.ver == "v7"){
   beta. <- 1.0
   GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
-    mutate(y = dgamma(x, jm$mean$GS.alpha, beta.))
+    mutate(y = dgamma(x, jm$mean$alpha., jm$mean$beta.))
   
   ggplot(GS.df) + 
     geom_line(aes(x = x, y = y)) +

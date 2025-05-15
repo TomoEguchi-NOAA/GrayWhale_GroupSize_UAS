@@ -10,7 +10,7 @@ model{
 	for (i in 1:n.grp){
 			
 		# True group size
-		GS.[i] ~ dgamma(GS.alpha, 1) T(GS.min[i],GS.max)   
+		GS.[i] ~ dgamma(alpha., beta.) T(GS.min[i],GS.max)   
 				
 		GS.Vis[i] ~ dbin(p.Vis[i], round(GS.[i])) # Observed group size by visual observers
 				
@@ -31,7 +31,7 @@ model{
 	B3 ~ dnorm(0, 0.1)
 	B4 ~ dnorm(0, 0.1)
 	#GS.mean ~ dunif(1, GS.max)
-	GS.alpha ~ dunif(1, 20)
+	#GS.alpha ~ dunif(1, 20)
 	#GS.mean <- GS.alpha * 0.1
 	
 	B0.uas ~ dnorm(0, 0.1)
@@ -40,8 +40,11 @@ model{
 	#B3.uas ~ dnorm(0, 0.1)
 	
 	# these parameter values come from fitting the gamma to UAS group sizes
-	#alpha.UAS <- 2.952 #~ dunif(1, 5) # 
-	#beta.UAS <- 0.760 #~ dunif(0.01, 1) # 
+	#d.alpha ~ dunif(0.01, 1.5)
+	d.beta ~ dunif(0.01, 3)
+	#beta. ~ dunif(, 3) #0.760 #0.5
+	alpha.  ~ dunif(4, 5)  #<- beta. + d.alpha #2.952 #1.5	
+	beta. <- alpha. - d.beta
 	
 	## Observer random effect
 	for(o in 1:n.obs){

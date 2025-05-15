@@ -22,6 +22,7 @@ library(ggplot2)
 library(jagsUI)
 library(bayesplot)
 library(loo)
+library(ggridges)
 
 compute.LOOIC <- function(loglik.array, data.array, MCMC.params){
   n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
@@ -155,7 +156,7 @@ jags.data <- list(n.grp = nrow(Sightings),
 
 # -1 models don't seem to work so well... 2025-04-30
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
-model.ver <- "v7"
+model.ver <- "v10"
 model.file <- switch(model.ver,
                      "v1" = "models/model_Pois_logMu_v1.txt",
                      "v1-1" = "models/model_Pois_logMu_v1-1.txt",
@@ -169,7 +170,8 @@ model.file <- switch(model.ver,
                      "v6" = "models/model_Pois_Gam_logitP_v6.txt",
                      "v7" = "models/model_Binom_Gam_logitP_v7.txt",
                      "v8" =  "models/model_Pois_pois_logitP_v8.txt",
-                     "v9" = "models/model_Gam_Gam_logMu_v9.txt")
+                     "v9" = "models/model_Gam_Gam_logMu_v9.txt",
+                     "v10" = "models/model_Binom_Pois_logitP_v10.txt")
 
 jags.params <- switch(model.ver,
                       "v1" = c("GS.UAS", "B0", "B1", "B2",
@@ -198,7 +200,7 @@ jags.params <- switch(model.ver,
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v7" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
                                "GS.", "GS.UAS", "GS.Vis", "p.UAS",
-                               "Obs.RF", "GS.alpha", "sigma.Obs", "log.lkhd"),
+                               "Obs.RF", "alpha.", "beta.", "sigma.Obs", "log.lkhd"),
                       "v8" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "p.UAS",
                                "mu.Vis",
                                "B0.uas", #"B1.uas", "B2.uas", "B3.uas",
@@ -206,7 +208,10 @@ jags.params <- switch(model.ver,
                                "Obs.RF", "sigma.Obs", "log.lkhd"),
                       "v9" = c("B0", "B1", "B2", "B3", "B4", "mu.Vis",
                                "GS.UAS", 
-                               "Obs.RF", "sigma.Obs","log.lkhd"))
+                               "Obs.RF", "sigma.Obs","log.lkhd"),
+                      "v10" = c("B0", "B1", "B2", "B3", "B4", "p.Vis", "B0.uas",
+                                "GS.", "GS.UAS", "GS.Vis", "p.UAS",
+                                "Obs.RF", "GS.mean", "sigma.Obs", "log.lkhd"))
 
 out.file.name <- paste0("RData/jm_out_", model.ver, "_max6.rds")
 if (!file.exists(out.file.name)){
@@ -252,11 +257,13 @@ params.to.plot <- switch(model.ver,
                          "v5" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v6" = c("B0", "B1", "B2", "B3", "sigma.Obs"),
                          "v7" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
-                                  "GS.alpha"),
+                                  "alpha.", "beta."),
                          "v8" = c("B0", "B1", "B2", "B3", "GS.mean",
                                   "sigma.Obs"),
                          "v9" = c("B0", "B1", "B2", "B3", "B4", 
-                                  "sigma.Obs"))
+                                  "sigma.Obs"),
+                         "v10" = c("B0", "B1", "B2", "B3", "B4", "B0.uas", "sigma.Obs",
+                                   "GS.mean"))
 
 # The following two lines don't run for "v1-1" for some reason... 
 mcmc_trace(jm$samples,
@@ -287,7 +294,15 @@ if (model.ver == "v3" | model.ver == "v3-1"){
 } else if (model.ver == "v7"){
   beta. <- 1.0
   GS.df <- data.frame(x = seq(0, 15, by = 0.01)) %>%
-    mutate(y = dgamma(x, jm$mean$GS.alpha, beta.))
+    mutate(y = dgamma(x, jm$mean$alpha., jm$mean$beta.))
+  
+  ggplot(GS.df) + 
+    geom_line(aes(x = x, y = y)) +
+    labs(x = "Group size", y = "Density")
+  
+} else if (model.ver == "v10"){
+  GS.df <- data.frame(x = seq(0, 15, by = 1)) %>%
+    mutate(y = dpois(x, jm$mean$GS.mean))
   
   ggplot(GS.df) + 
     geom_line(aes(x = x, y = y)) +
@@ -295,7 +310,7 @@ if (model.ver == "v3" | model.ver == "v3-1"){
   
 }
 
-if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
+if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8" | model.ver == "v10"){
   GS.pred <- data.frame(GS.mean = jm$mean$GS.,
                         GS.low = jm$q2.5$GS.,
                         GS.high = jm$q97.5$GS.)
@@ -308,7 +323,7 @@ GS.UAS.pred <- data.frame(GS.UAS.mean = jm$mean$GS.UAS,
 
 
 
-if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8"){
+if (model.ver == "v6" | model.ver == "v7" | model.ver == "v8" | model.ver == "v10"){
   
   Sightings.pred <- cbind(Sightings, GS.UAS.pred, GS.pred)
   p.pred <- ggplot(Sightings.pred) + 
