@@ -85,20 +85,20 @@ MCMC.params <- list(n.samples = 10000,
 #models<-c("v1", "v1-1", "v2", "v2-1", "v3", "v3-1", "v4", "v5", "v6")
 model.ver <- "v6"
 model.file <- switch(model.ver,
-                     "v1" = "models/model_Pois_logMu_v1.txt",
-                     "v1-1" = "models/model_Pois_logMu_v1-1.txt",
-                     "v1-2" = "models/model_Pois_logMu_v1-2.txt",
-                     "v2" = "models/model_Pois_Pois_logMu_v2.txt",  
-                     "v2-1" = "models/model_Pois_Pois_logMu_v2-1.txt",
-                     "v3" = "models/model_Pois_Gam_logMu_v3.txt",
-                     "v3-1"= "models/model_Pois_Gam_logMu_v3-1.txt",
-                     "v4" = "models/model_Pois_Pois_logitP_v4.txt",
-                     "v5" = "models/model_Pois_Gam_logitP_v5.txt",
+                     "v1" = "models/model_Pois_logMu_NoVis_v1.txt",
+                     "v1-1" = "models/model_Pois_logMu_NoVis_v1-1.txt",
+                     "v1-2" = "models/model_Pois_logMu_NoVis_v1-2.txt",
+                     "v2" = "models/model_Pois_Pois_logMu_NoVis_v2.txt",  
+                     "v2-1" = "models/model_Pois_Pois_logMu_NoVis_v2-1.txt",
+                     "v3" = "models/model_Pois_Gam_logMu_NoVis_v3.txt",
+                     "v3-1"= "models/model_Pois_Gam_logMu_NoVis_v3-1.txt",
+                     "v4" = "models/model_Pois_Pois_logitP_NoVis_v4.txt",
+                     "v5" = "models/model_Pois_Gam_logitP_NoVis_v5.txt",
                      "v6" = "models/model_Pois_Gam_logitP_NoVis_v6.txt",
-                     "v7" = "models/model_Binom_Gam_logitP_v7.txt",
-                     "v8" =  "models/model_Pois_pois_logitP_v8.txt",
-                     "v9" = "models/model_Gam_Gam_logMu_v9.txt",
-                     "v10" = "models/model_Binom_Pois_logitP_v10.txt")
+                     "v7" = "models/model_Binom_Gam_logitP_NoVis_v7.txt",
+                     "v8" =  "models/model_Pois_pois_logitP_NoVis_v8.txt",
+                     "v9" = "models/model_Gam_Gam_logMu_NoVis_v9.txt",
+                     "v10" = "models/model_Binom_Pois_logitP_NoVis_v10.txt")
 
 jags.params <- switch(model.ver,
                       "v1" = c("GS.UAS", "B0", "B1", "B2",
@@ -163,7 +163,8 @@ params.to.plot <- switch(model.ver,
 group.sizes <- unique(Sightings.1$GROUP_SIZE_LAST)
 k <- 1
 for (k in 1:length(group.sizes)){
-  Sightings <- filter(Sightings.1, GROUP_SIZE_LAST == group.sizes[k])
+  Sightings <- filter(Sightings.1, GROUP_SIZE_LAST == group.sizes[k]) %>%
+    na.omit()
   
   uniq.obs.df <- data.frame(OBS_1 = unique(Sightings$OBS_1)) %>%
     mutate(Obs.ID = 1:length(OBS_1))
@@ -171,53 +172,28 @@ for (k in 1:length(group.sizes)){
   Sightings %>% 
     left_join(uniq.obs.df, by = "OBS_1") -> Sightings
   
-  # Create a new column of minimum group sizes
-  Sightings %>%
-    mutate(Group_Size_Min_Vis = GROUP_SIZE_LAST - 2) -> Sightings
-
-  # Index for whether or not there is a UAS-based group size
-  #min.group.size <- Sightings$Group_Size_Min
-  min.group.size.Vis <- Sightings$Group_Size_Min_Vis
-  
-  GS.I <- vector(mode = "numeric", length = length(min.group.size.Vis))
-  GS.I[!is.na(Sightings$Group_Size)] <- 1
   
   # Adjust the minimum group size. Minimum group size should be less than
   # the observed 
   #min.group.size[is.na(min.group.size)] <- 1
-  min.group.size.Vis[min.group.size.Vis < 1] <- 1
   
   min.group.size.UAS <- Sightings$Group_Size_Min
-  min.group.size.UAS[is.na(min.group.size.UAS)] <- min.group.size.Vis[is.na(min.group.size.UAS)]
-  
-  min.group.size.df <- data.frame(UAS = min.group.size.UAS,
-                                  Vis = Sightings$GROUP_SIZE_LAST)
-  
-  min.group.size <- apply(min.group.size.df, FUN = max, MARGIN = 1, na.rm = T)
+  min.group.size.UAS[is.na(min.group.size.UAS)] <- 1 
   
   # group size categories
-  GS.cat <- vector(mode = "numeric", length = length(min.group.size))
+  GS.cat <- vector(mode = "numeric", length = length(min.group.size.UAS))
   GS.cat[Sightings$GROUP_SIZE_LAST < 3] <- 1
   GS.cat[Sightings$GROUP_SIZE_LAST > 2 & Sightings$GROUP_SIZE_LAST < 5] <- 2
   GS.cat[Sightings$GROUP_SIZE_LAST > 4] <- 3
   
-  GS.min <- min.group.size.UAS
-  GS.min[which((min.group.size.UAS - min.group.size) < 0)] <- Sightings$GROUP_SIZE_LAST[which((min.group.size.UAS - min.group.size) < 0)]  
-  
   jags.data <- list(n.grp = nrow(Sightings),
-                    GS.Vis = Sightings$GROUP_SIZE_LAST,
                     GS.UAS = Sightings$Group_Size,
                     Dist = Sightings$DIST_MIN,
                     Bft = Sightings$BEAUFORT_LAST,
                     Vis = Sightings$VISIBILITY_LAST,
-                    obs = Sightings$Obs.ID,
-                    GS.min.Vis = min.group.size.Vis,
                     GS.min.UAS = min.group.size.UAS,
-                    GS.min = min.group.size,
-                    GS.I = GS.I,
                     GS.max = max(Sightings$Group_Size_Min, na.rm = T) + 5,
-                    GS.cat = GS.cat,
-                    n.obs = nrow(uniq.obs.df))
+                    GS.cat = GS.cat)
   
   
   
