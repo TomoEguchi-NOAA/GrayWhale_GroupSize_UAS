@@ -185,7 +185,6 @@ There were `r nrow(Sightings.1)` records in the 2025 dataset. Group sizes were d
 
 Visual observers recorded group sizes of less than 7 except one group, which was 12 (Figure @fig-group-size), whereas UAS-based counts included group sizes of 7, 8, and 9. Without records from visual observers, predictions cannot be made for those group sizes. To eliminate the influence of the observed group size of 12, I also ran the same analyses using only data with group sizes less than 7.
 
-
 ![Distributions of observed group sizes by visual observers (yellow) and through UAS video footage (purple).](figures/group_size.png){#fig-group-size}
 
 All models were run using JAGS in R with the *jagsUI* package. Goodness of fit was determined with the Pareto-k statistic using the *loo* package. Convergence of Markov chain Monte Carlo (MCMC) was determined using the $\hat{R}$ statistic.
@@ -257,8 +256,7 @@ if (save.fig)
 
 ```
 
-Convergence was reached for all parameters ($Max(\hat{R}) = $ `r max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T)))`). Pareto-k statistic indicated the model fit well to the data (all Pareto-k statistics \< 0.6). In this model, the parameter of interest is predicted $n^{UAS}$ conditional on visually observed group sizes (@fig-group-size-v3). 
-
+Convergence was reached for all parameters (\$Max(\hat{R}) = \$ `r max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T)))`). Pareto-k statistic indicated the model fit well to the data (all Pareto-k statistics \< 0.6). In this model, the parameter of interest is predicted $n^{UAS}$ conditional on visually observed group sizes (@fig-group-size-v3).
 
 ![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 1.](figures/group_size_posteriors_v3.png){#fig-group-size-v3}
 
@@ -281,9 +279,9 @@ model.comp.max6[1,] <- c("1",
                          max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))))
 ```
 
-For the dataset with group sizes < 7, convergence was reached for all parameters ($Max(\hat{R}) = $ `r signif(max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))), 3)`). One data point indicated a large Pareto-k statistic, indicating the data point did not fit well to the model. The conditional posterior distributions of the predicted UAS counts indicated a similar pattern to what was observed for the full dataset (@fig-group-size-v3-max6).  
+For the dataset with group sizes \< 7, convergence was reached for all parameters (\$Max(\hat{R}) = \$ `r signif(max(unlist(lapply(jm.out$jm$Rhat, FUN = max, na.rm = T))), 3)`). One data point indicated a large Pareto-k statistic, indicating the data point did not fit well to the model. The conditional posterior distributions of the predicted UAS counts indicated a similar pattern to what was observed for the full dataset (@fig-group-size-v3-max6).
 
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 using Model 1.](figures/group_size_posteriors_v3_max6.png){#fig-group-size-v3-max6}
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size \< 7 using Model 1.](figures/group_size_posteriors_v3_max6.png){#fig-group-size-v3-max6}
 
 ```{r}
 #| echo: false
@@ -299,7 +297,6 @@ if (save.fig)
          dpi = 600)
 
 ```
-
 
 ### Model 2
 
@@ -328,7 +325,6 @@ if (save.fig)
 
 ```
 
-
 ![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 2.](figures/group_size_posteriors_v5.png){#fig-group-size-v5}
 
 ```{r}
@@ -355,9 +351,7 @@ if (save.fig)
          dpi = 600)
 ```
 
-
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 using Model 2.](figures/group_size_posteriors_v5_max6.png){#fig-group-size-v5-max6}
-
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size \< 7 using Model 2.](figures/group_size_posteriors_v5_max6.png){#fig-group-size-v5-max6}
 
 ### Model 3
 
@@ -426,7 +420,6 @@ if (save.fig)
 
 ![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers using Model 3.](figures/group_size_posteriors_v6.png){#fig-group-size-v6}
 
-
 ```{r}
 #| echo: false
 jm.out <- readRDS("RData/jm_out_v6_max6.rds")
@@ -454,4 +447,4 @@ if (save.fig)
 
 ```
 
-![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size < 7 and using Model 3.](figures/group_size_posteriors_v6_max6.png){#fig-group-size-v6-max6}
+![Posterior Distributions of predicted UAS-based group sizes conditional on reported group sizes by visual observers when data were limited to group size \< 7 and using Model 3.](figures/group_size_posteriors_v6_max6.png){#fig-group-size-v6-max6}
